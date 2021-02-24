@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { AssertionError } from "chai";
 import logger from "../providers/logger";
 import { ModelError } from "../commons/errors";
+import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
 
 export async function clientErrorHandler(
     err: Error,
@@ -9,6 +10,8 @@ export async function clientErrorHandler(
     res: Response,
     next: NextFunction,
 ) {
+    console.log(err);
+
     if (err instanceof ModelError) {
         return res.status(400).json({
             fail: { message: err.message },
@@ -19,6 +22,18 @@ export async function clientErrorHandler(
         const [status, message] = err.message.split(":");
         return res.status(parseInt(status)).json({
             fail: { message: message },
+        });
+    }
+
+    if (err instanceof TokenExpiredError) {
+        return res.status(401).json({
+            error: { message: "token expired" },
+        });
+    }
+
+    if (err instanceof JsonWebTokenError) {
+        return res.status(401).json({
+            error: { message: "invalid token" },
         });
     }
 
