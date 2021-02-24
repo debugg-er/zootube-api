@@ -3,7 +3,7 @@ import { Video } from "./Video";
 
 @Index("categories_pkey", ["id"], { unique: true })
 @Entity("categories", { schema: "public" })
-export class Categorie {
+export class Category {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 

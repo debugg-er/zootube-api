@@ -11,7 +11,7 @@ export function mustExist(...requestKeyPaths: string[]) {
                 return _.get(req, keyPath) !== undefined;
             });
 
-            expect(isAllExist, "400:Missing parameter").to.be.true;
+            expect(isAllExist, "400:missing parameter").to.be.true;
 
             return method.apply(this, arguments);
         };
@@ -27,7 +27,7 @@ export function mustExistOne(...requestKeyPaths: string[]) {
                 return _.get(req, keyPath) !== undefined;
             });
 
-            expect(isExistOne, "400:Missing parameter").to.be.true;
+            expect(isExistOne, "400:missing parameter").to.be.true;
 
             return method.apply(this, arguments);
         };
@@ -40,10 +40,28 @@ export function isNumber(...requestKeyPaths: string[]) {
 
         descriptor.value = function (req: Request, res: Response, next: NextFunction) {
             const isAllNumber = requestKeyPaths.every((keyPath) => {
-                return typeof _.get(req, keyPath) === "number";
+                const value = _.get(req, keyPath);
+                return typeof value === "number" || !isNaN(+value);
             });
 
-            expect(isAllNumber, "400:Invalid parameter").to.be.true;
+            expect(isAllNumber, "400:invalid parameter").to.be.true;
+
+            return method.apply(this, arguments);
+        };
+    };
+}
+
+export function isBinary(...requestKeyPaths: string[]) {
+    return function (target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
+        const method = descriptor.value;
+
+        descriptor.value = function (req: Request, res: Response, next: NextFunction) {
+            const isAllBinary = requestKeyPaths.every((keyPath) => {
+                const value = _.get(req, keyPath);
+                return value === "1" || value === "0";
+            });
+
+            expect(isAllBinary, "400:invalid parameter").to.be.true;
 
             return method.apply(this, arguments);
         };

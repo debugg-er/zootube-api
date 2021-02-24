@@ -7,16 +7,20 @@
         "type": "git"
     },
     "dependencies": {
+        "bcrypt": "^5.0.0",
         "chai": "^4.2.0",
         "dotenv": "^8.2.0",
         "express": "^4.17.1",
+        "jsonwebtoken": "^8.5.1",
         "lodash": "^4.17.21",
         "pg": "^8.5.1",
         "typeorm": "^0.2.31"
     },
     "devDependencies": {
+        "@types/bcrypt": "^3.0.0",
         "@types/chai": "^4.2.14",
         "@types/express": "^4.17.8",
+        "@types/jsonwebtoken": "^8.5.0",
         "@types/lodash": "^4.14.168",
         "ts-node-dev": "^1.1.1",
         "typescript": "^4.0.3"

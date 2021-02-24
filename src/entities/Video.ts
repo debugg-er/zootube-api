@@ -1,6 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToMany, ManyToOne, OneToMany } from "typeorm";
 import { Comment } from "./Comment";
-import { Categorie } from "./Categorie";
+import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
 import { WatchedVideo } from "./WatchedVideo";
@@ -39,8 +39,8 @@ export class Video {
     @OneToMany(() => Comment, (comments) => comments.video)
     comments: Comment[];
 
-    @ManyToMany(() => Categorie, (categories) => categories.videos)
-    categories: Categorie[];
+    @ManyToMany(() => Category, (categories) => categories.videos)
+    categories: Category[];
 
     @OneToMany(() => VideoLike, (videoLikes) => videoLikes.video)
     videoLikes: VideoLike[];

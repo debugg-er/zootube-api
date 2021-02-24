@@ -1,3 +1,4 @@
+import * as path from "path";
 import { Connection, createConnection } from "typeorm";
 import env from "./env";
 
@@ -13,6 +14,8 @@ class Database {
             password: env.DB_PASSWORD,
             database: env.DB_NAME,
             synchronize: false,
+            logging: ["query"],
+            entities: [path.join(__dirname, "../entities/*.ts")],
         });
     }
 }

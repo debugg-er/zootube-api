@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AssertionError } from "chai";
 import logger from "../providers/logger";
+import { ModelError } from "../commons/errors";
 
 export async function clientErrorHandler(
     err: Error,
@@ -8,10 +9,16 @@ export async function clientErrorHandler(
     res: Response,
     next: NextFunction,
 ) {
+    if (err instanceof ModelError) {
+        return res.status(400).json({
+            fail: { message: err.message },
+        });
+    }
+
     if (err instanceof AssertionError) {
         const [status, message] = err.message.split(":");
         return res.status(parseInt(status)).json({
-            error: { message: message },
+            fail: { message: message },
         });
     }
 
