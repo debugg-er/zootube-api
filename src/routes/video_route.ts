@@ -10,12 +10,21 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+router.get("/", authController.authorize, videoController.getVideos);
+
 router.post(
     "/",
     authController.authorize,
     multipart_middleware.storeUploadFiles,
     videoController.uploadVideo,
     multipart_middleware.removeUploadedFiles,
+);
+
+router.patch(
+    "/:video_id(\\w{10})",
+    authController.authorize,
+    identifyMiddleware.isOwnVideo,
+    videoController.updateVideo,
 );
 
 router.delete(

@@ -43,7 +43,7 @@ export class Video {
     @Column("integer", { name: "views", default: () => "0" })
     views: number;
 
-    @Column("date", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
+    @Column("timestamp", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
     uploadedAt: Date;
 
     @OneToMany(() => Comment, (comments) => comments.video)
