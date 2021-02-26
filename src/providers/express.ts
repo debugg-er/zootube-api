@@ -3,6 +3,7 @@ import * as morgan from "morgan";
 import env from "./env";
 
 import authRoute from "../routes/auth_route";
+import videoRoute from "../routes/video_route";
 
 import * as errorHandler from "../utils/error_handler";
 
@@ -18,6 +19,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/auth", authRoute);
+app.use("/videos", videoRoute);
 
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);

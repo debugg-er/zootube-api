@@ -1,9 +1,19 @@
-import { Column, Entity, Index, JoinColumn, ManyToMany, ManyToOne, OneToMany } from "typeorm";
+import {
+    Column,
+    Entity,
+    getRepository,
+    Index,
+    JoinColumn,
+    ManyToMany,
+    ManyToOne,
+    OneToMany,
+} from "typeorm";
 import { Comment } from "./Comment";
 import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
 import { WatchedVideo } from "./WatchedVideo";
+import { randomString } from "../utils/string_function";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -34,7 +44,7 @@ export class Video {
     views: number;
 
     @Column("date", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
-    uploadedAt: string;
+    uploadedAt: Date;
 
     @OneToMany(() => Comment, (comments) => comments.video)
     comments: Comment[];
@@ -51,4 +61,14 @@ export class Video {
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.video)
     watchedVideos: WatchedVideo[];
+
+    // --- additional methods
+    static async generateId(): Promise<string> {
+        let id;
+        do {
+            id = randomString(10);
+        } while ((await getRepository(this).count({ id })) === 1);
+
+        return id;
+    }
 }
