@@ -117,9 +117,10 @@ class VideoController {
     }
 
     @asyncHandler
-    @mustExistOne("body.title", "body.description", "body.categories")
+    @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
         const { title, description, categories } = req.body;
+        const { thumbnail } = req.files;
         const { video } = req.local;
 
         video.title = title || video.title;
@@ -130,6 +131,25 @@ class VideoController {
             video.categories = await getRepository(Category).find({
                 where: { category: In(categories.split(",")) },
             });
+        }
+
+        if (thumbnail) {
+            expect(thumbnail.mimetype, "400:invalid thumbnail").to.match(/^image/);
+            await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
+                formData: {
+                    file: {
+                        value: fs.createReadStream(thumbnail.path),
+                        options: {
+                            filename: thumbnail.name,
+                            contentType: thumbnail.mimetype,
+                        },
+                    },
+                },
+            });
+
+            await request.delete(env.STATIC_SERVER_ENDPOINT + video.thumbnailPath);
+
+            video.thumbnailPath = "/thumbnails/" + thumbnail.name;
         }
 
         await getRepository(Video).save(video);

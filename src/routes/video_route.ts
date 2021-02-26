@@ -3,7 +3,7 @@ import authController from "../controllers/auth_controller";
 
 import videoController from "../controllers/video_controller";
 import identifyMiddleware from "../middlewares/identify_middleware";
-import multipart_middleware from "../middlewares/multipart_middleware";
+import multipartMiddleware from "../middlewares/multipart_middleware";
 
 const router = express.Router();
 
@@ -15,16 +15,18 @@ router.get("/", authController.authorize, videoController.getVideos);
 router.post(
     "/",
     authController.authorize,
-    multipart_middleware.storeUploadFiles,
+    multipartMiddleware.storeUploadFiles("video"),
     videoController.uploadVideo,
-    multipart_middleware.removeUploadedFiles,
+    multipartMiddleware.removeUploadedFiles,
 );
 
 router.patch(
     "/:video_id(\\w{10})",
     authController.authorize,
     identifyMiddleware.isOwnVideo,
+    multipartMiddleware.storeUploadFiles("thumbnail"),
     videoController.updateVideo,
+    multipartMiddleware.removeUploadedFiles,
 );
 
 router.delete(
