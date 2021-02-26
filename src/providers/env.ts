@@ -13,4 +13,5 @@ export default {
     SALT_ROUND: process.env.SALT_ROUND || 10,
     JWT_SECRET: process.env.JWT_SECRET || "secret",
     JWT_EXPIRE_TIME: process.env.JWT_EXPIRE_TIME || "7d",
+    NODE_ENV: process.env.NODE_ENV || "production",
 };

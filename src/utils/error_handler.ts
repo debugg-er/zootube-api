@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AssertionError } from "chai";
+import env from "../providers/env";
 import logger from "../providers/logger";
 import { ModelError } from "../commons/errors";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
@@ -10,7 +11,9 @@ export async function clientErrorHandler(
     res: Response,
     next: NextFunction,
 ) {
-    console.log(err);
+    if (env.NODE_ENV === "development") {
+        console.log(err);
+    }
 
     if (err instanceof ModelError) {
         return res.status(400).json({
@@ -41,7 +44,11 @@ export async function clientErrorHandler(
 }
 
 export function serverErrorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
-    logger.error(err);
+    if (env.NODE_ENV === "production") {
+        logger.error(err);
+    } else if (env.NODE_ENV === "development") {
+        console.log(err);
+    }
 
     if (res.writableEnded) return;
 

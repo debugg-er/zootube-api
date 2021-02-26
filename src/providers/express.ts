@@ -1,10 +1,16 @@
 import * as express from "express";
+import * as morgan from "morgan";
+import env from "./env";
 
 import authRoute from "../routes/auth_route";
 
 import * as errorHandler from "../utils/error_handler";
 
 const app: express.Application = express();
+
+if (env.NODE_ENV === "development") {
+    app.use(morgan("dev"));
+}
 
 app.use((req, res, next) => {
     req.local = {};

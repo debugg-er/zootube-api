@@ -14,7 +14,7 @@ class Database {
             password: env.DB_PASSWORD,
             database: env.DB_NAME,
             synchronize: false,
-            logging: ["query"],
+            logging: env.NODE_ENV === "development" ? ["query"] : false,
             entities: [path.join(__dirname, "../entities/*.ts")],
         });
     }
