@@ -13,6 +13,7 @@ import { Category } from "../entities/Category";
 import { mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { randomString } from "../utils/string_function";
 import extractFrame from "../utils/extract_frame";
+import { VideoLike } from "../entities/VideoLike";
 
 const tempPath = path.join(__dirname, "../../tmp");
 const listRegex = /^[a-zA-Z]([a-zA-Z,]*[a-zA-z])?$/;
@@ -93,14 +94,14 @@ class VideoController {
     }
 
     @asyncHandler
-    public async getVideo(req: Request, res: Response, next: NextFunction) {
+    public async getVideo(req: Request, res: Response) {
         const { video_id } = req.params;
 
         const video = await getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username"])
+            .addSelect(["users.username", "users.iconPath"])
             .where({ id: video_id })
             .getOne();
 
@@ -121,7 +122,45 @@ class VideoController {
     }
 
     @asyncHandler
-    public async getVideos(req: Request, res: Response, next: NextFunction) {
+    @mustExist("body.reaction")
+    public async reactVideo(req: Request, res: Response) {
+        const { video_id } = req.params;
+        const { reaction } = req.body;
+
+        expect(reaction, "400:invalid parameters").to.be.oneOf(["like", "dislike"]);
+
+        const videoLikeRepository = getRepository(VideoLike);
+        const isLike = reaction === "like";
+
+        const videoLike = videoLikeRepository.create({
+            videoId: video_id,
+            userId: req.local.auth.id,
+            like: isLike,
+        });
+
+        await videoLikeRepository.save(videoLike);
+
+        res.status(200).json({
+            data: { message: isLike ? "liked" : "disliked" },
+        });
+    }
+
+    @asyncHandler
+    public async deleteVideoReaction(req: Request, res: Response) {
+        const { video_id } = req.params;
+
+        await getRepository(VideoLike).delete({
+            videoId: video_id,
+            userId: req.local.auth.id,
+        });
+
+        res.status(200).json({
+            data: { message: "deleted reaction" },
+        });
+    }
+
+    @asyncHandler
+    public async getVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
         const limit = +req.query.offset || 30;
@@ -185,10 +224,12 @@ class VideoController {
         res.status(200).json({
             data: video,
         });
+
+        next();
     }
 
     @asyncHandler
-    public async deleteVideo(req: Request, res: Response, next: NextFunction) {
+    public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
         await request.delete(env.STATIC_SERVER_ENDPOINT + video.videoPath);
