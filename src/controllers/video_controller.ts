@@ -4,7 +4,7 @@ import * as request from "request-promise";
 import getVideoDuration from "../utils/get_video_duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
-import { getRepository, In } from "typeorm";
+import { createQueryBuilder, getRepository, In } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
 import env from "../providers/env";
@@ -81,7 +81,7 @@ class VideoController {
             }),
         });
 
-        await videoRepository.save(_video);
+        await videoRepository.insert(_video);
 
         res.status(201).json({
             data: _video,
@@ -90,6 +90,34 @@ class VideoController {
         await fs.promises.unlink(thumbnailPath);
 
         next();
+    }
+
+    @asyncHandler
+    public async getVideo(req: Request, res: Response, next: NextFunction) {
+        const { video_id } = req.params;
+
+        const video = await getRepository(Video)
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username"])
+            .where({ id: video_id })
+            .getOne();
+
+        expect(video, "404:video not found").to.exist;
+
+        const likeAndDislike = await createQueryBuilder("video_likes")
+            .select('SUM(CASE WHEN "like" = true THEN 1 ELSE 0 END)::INT', "like")
+            .addSelect('SUM(CASE WHEN "like" = false THEN 1 ELSE 0 END)::INT', "dislike")
+            .where("video_id = :videoId", { videoId: video_id })
+            .getRawOne();
+
+        likeAndDislike.like = likeAndDislike.like || 0;
+        likeAndDislike.dislike = likeAndDislike.dislike || 0;
+
+        res.status(200).json({
+            data: { ...video, ...likeAndDislike },
+        });
     }
 
     @asyncHandler
@@ -152,7 +180,7 @@ class VideoController {
             video.thumbnailPath = "/thumbnails/" + thumbnail.name;
         }
 
-        await getRepository(Video).save(video);
+        await getRepository(Video).update({ id: video.id }, video);
 
         res.status(200).json({
             data: video,

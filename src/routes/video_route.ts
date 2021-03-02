@@ -11,6 +11,7 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.get("/", authController.authorize, videoController.getVideos);
+router.get("/:video_id(\\w{10})", videoController.getVideo);
 
 router.post(
     "/",
