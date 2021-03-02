@@ -4,6 +4,7 @@ import {
     BeforeUpdate,
     Column,
     Entity,
+    getRepository,
     Index,
     OneToMany,
     PrimaryGeneratedColumn,
@@ -46,11 +47,18 @@ export class User {
     female: boolean;
 
     @Column("character varying", {
-        name: "photo_path",
-        default: "/photos/default.jpg",
+        name: "avatar_path",
+        default: "/photos/default-avatar.jpg",
         length: 128,
     })
-    photoPath: string;
+    avatarPath: string;
+
+    @Column("character varying", {
+        name: "icon_path",
+        default: "/photos/default-icon.jpg",
+        length: 128,
+    })
+    iconPath: string;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.user)
     commentLikes: CommentLike[];
@@ -139,8 +147,11 @@ export class User {
         if (this.lastName && !nameRegex.test(this.lastName)) {
             throw new ModelError("invalid last_name");
         }
-        if (this.photoPath && !urlPathRegex.test(this.photoPath)) {
-            throw new ModelError("invalid photo_path");
+        if (this.avatarPath && !urlPathRegex.test(this.avatarPath)) {
+            throw new ModelError("invalid avatar_path");
+        }
+        if (this.iconPath && !urlPathRegex.test(this.iconPath)) {
+            throw new ModelError("invalid icon_path");
         }
         if (this.password && this.tempPassword !== this.password) {
             if (!passwordRegex.test(this.password)) {

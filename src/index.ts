@@ -1,20 +1,21 @@
-// import * as os from 'os';
-// import * as cluster from 'cluster';
-
-// import server from './server';
-
-// if (cluster.isMaster) {
-//     const cpus = os.cpus();
-//     cpus.forEach(() => cluster.fork());
-//     cluster.fork();
-// } else {
-//     server.init().then(() => {
-//         server.listen();
-//     });
-// }
+import * as os from "os";
+import * as cluster from "cluster";
+import env from "./providers/env";
 
 import server from "./server";
 
-server.init().then(() => {
-    server.listen();
-});
+if (env.NODE_ENV === "production") {
+    if (cluster.isMaster) {
+        const cpus = os.cpus();
+        cpus.forEach(() => cluster.fork());
+        cluster.fork();
+    } else {
+        server.init().then(() => {
+            server.listen();
+        });
+    }
+} else {
+    server.init().then(() => {
+        server.listen();
+    });
+}
