@@ -1,5 +1,8 @@
+import { expect } from "chai";
 import { Request, Response } from "express";
-import { createQueryBuilder, getRepository } from "typeorm";
+import { createQueryBuilder, getRepository, In } from "typeorm";
+import { listRegex } from "../commons/regexs";
+import { mustInRange } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
@@ -35,17 +38,34 @@ class UserController {
     }
 
     @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
     public async getOwnVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
+        const categories = req.query.categories as string;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const videos = await getRepository(Video)
+        if (categories) {
+            expect(categories, "400:invalid parameter").to.match(listRegex);
+        }
+
+        let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .where({ uploadedBy: id })
+            .where({ uploadedBy: id });
+
+        // add additional where clause if categories are required
+        if (categories) {
+            videosQueryBuilder = videosQueryBuilder.andWhere(
+                "categories.category IN (:...categories)",
+                { categories: categories.split(",") },
+            );
+        }
+
+        const videos = await videosQueryBuilder
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
