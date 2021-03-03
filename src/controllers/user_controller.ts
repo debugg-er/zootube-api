@@ -4,6 +4,8 @@ import { createQueryBuilder, getRepository } from "typeorm";
 import { listRegex } from "../commons/regexs";
 import { mustInRange } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
+import { isBinary, mustExistOne } from "../decorators/validate_decorators";
+import { Subscription } from "../entities/Subscription";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
 
@@ -26,6 +28,45 @@ class UserController {
 
         delete user.password;
         delete user.tempPassword;
+
+        res.status(200).json({
+            data: {
+                ...user,
+                // totalViews and totalSubscribers may be null if there is no videos or subscribers
+                totalViews: totalViews || 0,
+                totalSubscribers: totalSubscribers || 0,
+            },
+        });
+    }
+
+    @asyncHandler
+    public async getUserProfile(req: Request, res: Response) {
+        const { username } = req.params;
+
+        const user = await getRepository(User).findOne(
+            { username: username },
+            {
+                select: [
+                    "id",
+                    "username",
+                    "firstName",
+                    "lastName",
+                    "female",
+                    "avatarPath",
+                    "iconPath",
+                ],
+            },
+        );
+
+        const { totalSubscribers } = await createQueryBuilder("subscriptions")
+            .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
+            .where("user_id = :userId", { userId: user.id })
+            .getRawOne();
+
+        const { totalViews } = await createQueryBuilder("videos")
+            .select('SUM(views)::INT AS "totalViews"')
+            .where("uploaded_by = :userId", { userId: user.id })
+            .getRawOne();
 
         res.status(200).json({
             data: {
@@ -114,6 +155,67 @@ class UserController {
             data: videos,
         });
     }
+
+    @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getSubscriptions(req: Request, res: Response) {
+        const { id } = req.local.auth;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const _subscriptions = await getRepository(Subscription)
+            .createQueryBuilder("subscriptions")
+            .leftJoin("subscriptions.user", "users")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .where("subscriptions.subscriber = :userId", { userId: id })
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        const subscriptions = _subscriptions.map((subscription) => subscription.user);
+
+        res.status(200).json({
+            data: subscriptions,
+        });
+    }
+
+    @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getSubscribers(req: Request, res: Response) {
+        const { id } = req.local.auth;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const _subscriptions = await getRepository(Subscription)
+            .createQueryBuilder("subscriptions")
+            .leftJoin("subscriptions.subscriber", "subscribers")
+            .addSelect([
+                "subscribers.username",
+                "subscribers.firstName",
+                "subscribers.lastName",
+                "subscribers.iconPath",
+            ])
+            .where("subscriptions.user = :userId", { userId: id })
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        const subscribers = _subscriptions.map((subscription) => subscription.subscriber);
+
+        res.status(200).json({
+            data: subscribers,
+        });
+    }
+
+    // @asyncHandler
+    // @mustExistOne("body.firstName", "body.lastName", "body.female", "files.avatar")
+    // @isBinary("body.female")
+    // public async updateProfile(req: Request, res: Response) {
+    //     const { firstName, lastName, female } = req.body;
+    //     const { avatar } = req.files;
+    // }
 }
 
 export default new UserController();

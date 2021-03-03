@@ -58,7 +58,7 @@ export function isBinary(...requestKeyPaths: string[]) {
         descriptor.value = function (req: Request, res: Response, next: NextFunction) {
             const isAllBinary = requestKeyPaths.every((keyPath) => {
                 const value = _.get(req, keyPath);
-                return value === "1" || value === "0";
+                return value === "1" || value === "0" || value === undefined;
             });
 
             expect(isAllBinary, "400:invalid parameter").to.be.true;
