@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { Request, Response } from "express";
-import { createQueryBuilder, getRepository, In } from "typeorm";
+import { createQueryBuilder, getRepository } from "typeorm";
 import { listRegex } from "../commons/regexs";
 import { mustInRange } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
@@ -55,7 +55,10 @@ class UserController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .where({ uploadedBy: id });
+            .where({ uploadedBy: id })
+            .orderBy("videos.uploadedAt", "DESC")
+            .skip(offset)
+            .take(limit);
 
         // add additional where clause if categories are required
         if (categories) {
@@ -65,11 +68,47 @@ class UserController {
             );
         }
 
-        const videos = await videosQueryBuilder
+        const videos = await videosQueryBuilder.getMany();
+
+        res.status(200).json({
+            data: videos,
+        });
+    }
+
+    @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getUserVideos(req: Request, res: Response) {
+        const { username } = req.params;
+        const categories = req.query.categories as string;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        if (categories) {
+            expect(categories, "400:invalid parameter").to.match(listRegex);
+        }
+
+        const user = await getRepository(User).findOne({ username }, { select: ["id"] });
+
+        let videosQueryBuilder = getRepository(Video)
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .where({ uploadedBy: user })
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
-            .take(limit)
-            .getMany();
+            .take(limit);
+
+        // add additional where clause if categories are required
+        if (categories) {
+            videosQueryBuilder = videosQueryBuilder.andWhere(
+                "categories.category IN (:...categories)",
+                { categories: categories.split(",") },
+            );
+        }
+
+        const videos = await videosQueryBuilder.getMany();
 
         res.status(200).json({
             data: videos,
