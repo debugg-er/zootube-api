@@ -8,7 +8,6 @@ if (env.NODE_ENV === "production") {
     if (cluster.isMaster) {
         const cpus = os.cpus();
         cpus.forEach(() => cluster.fork());
-        cluster.fork();
     } else {
         server.init().then(() => {
             server.listen();

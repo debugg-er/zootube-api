@@ -23,7 +23,6 @@ app.use("/auth", authRoute);
 app.use("/videos", videoRoute);
 app.use("/users", userRoute);
 
-app.use("/auth", authRoute);
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);
 
