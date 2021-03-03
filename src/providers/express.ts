@@ -5,6 +5,7 @@ import env from "./env";
 import authRoute from "../routes/auth_route";
 import videoRoute from "../routes/video_route";
 import userRoute from "../routes/user_route";
+import subscriptionRoute from "../routes/subscription_route";
 
 import * as errorHandler from "../utils/error_handler";
 
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 app.use("/auth", authRoute);
 app.use("/videos", videoRoute);
 app.use("/users", userRoute);
+app.use("/subscriptions", subscriptionRoute);
 
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);
