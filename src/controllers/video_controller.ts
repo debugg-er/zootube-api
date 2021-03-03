@@ -184,6 +184,49 @@ class VideoController {
     }
 
     @asyncHandler
+    public async getSubscriptionVideos(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const videos = await getRepository(Video)
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .where("users.id = :userId", { userId: req.local.auth.id })
+            .orderBy("videos.uploadedAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: videos,
+        });
+    }
+
+    @asyncHandler
+    public async getWatchedVideos(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const videos = await getRepository(Video)
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .innerJoin("videos.watchedVideos", "watchedVideos")
+            .where("watchedVideos.userId = :userId", { userId: req.local.auth.id })
+            .orderBy("videos.uploadedAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: videos,
+        });
+    }
+
+    @asyncHandler
     @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
         const { title, description, categories } = req.body;
