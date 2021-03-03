@@ -27,7 +27,7 @@ class AuthController {
             female: female,
         });
 
-        await userRepository.save(newUser);
+        await userRepository.insert(newUser);
 
         res.status(201).json({
             data: {
