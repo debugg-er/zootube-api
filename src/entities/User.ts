@@ -4,7 +4,6 @@ import {
     BeforeUpdate,
     Column,
     Entity,
-    getRepository,
     Index,
     OneToMany,
     PrimaryGeneratedColumn,

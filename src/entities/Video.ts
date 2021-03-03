@@ -1,4 +1,6 @@
 import {
+    BeforeInsert,
+    BeforeUpdate,
     Column,
     Entity,
     getRepository,
@@ -14,6 +16,8 @@ import { VideoLike } from "./VideoLike";
 import { User } from "./User";
 import { WatchedVideo } from "./WatchedVideo";
 import { randomString } from "../utils/string_function";
+import { ModelError } from "../commons/errors";
+import { urlPathRegex } from "../commons/regexs";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -70,5 +74,17 @@ export class Video {
         } while ((await getRepository(this).count({ id })) === 1);
 
         return id;
+    }
+
+    // --- listeners
+    @BeforeInsert()
+    @BeforeUpdate()
+    validate() {
+        if (this.videoPath && !urlPathRegex.test(this.videoPath)) {
+            throw new ModelError("invalid video_path");
+        }
+        if (this.thumbnailPath && !urlPathRegex.test(this.thumbnailPath)) {
+            throw new ModelError("invalid thumbnail_path");
+        }
     }
 }
