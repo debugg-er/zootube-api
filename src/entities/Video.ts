@@ -1,9 +1,23 @@
-import { Column, Entity, Index, JoinColumn, ManyToMany, ManyToOne, OneToMany } from "typeorm";
+import {
+    BeforeInsert,
+    BeforeUpdate,
+    Column,
+    Entity,
+    getRepository,
+    Index,
+    JoinColumn,
+    ManyToMany,
+    ManyToOne,
+    OneToMany,
+} from "typeorm";
 import { Comment } from "./Comment";
 import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
 import { WatchedVideo } from "./WatchedVideo";
+import { randomString } from "../utils/string_function";
+import { ModelError } from "../commons/errors";
+import { urlPathRegex } from "../commons/regexs";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -33,8 +47,8 @@ export class Video {
     @Column("integer", { name: "views", default: () => "0" })
     views: number;
 
-    @Column("date", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
-    uploadedAt: string;
+    @Column("timestamp", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
+    uploadedAt: Date;
 
     @OneToMany(() => Comment, (comments) => comments.video)
     comments: Comment[];
@@ -51,4 +65,26 @@ export class Video {
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.video)
     watchedVideos: WatchedVideo[];
+
+    // --- additional methods
+    static async generateId(): Promise<string> {
+        let id;
+        do {
+            id = randomString(10);
+        } while ((await getRepository(this).count({ id })) === 1);
+
+        return id;
+    }
+
+    // --- listeners
+    @BeforeInsert()
+    @BeforeUpdate()
+    validate() {
+        if (this.videoPath && !urlPathRegex.test(this.videoPath)) {
+            throw new ModelError("invalid video_path");
+        }
+        if (this.thumbnailPath && !urlPathRegex.test(this.thumbnailPath)) {
+            throw new ModelError("invalid thumbnail_path");
+        }
+    }
 }

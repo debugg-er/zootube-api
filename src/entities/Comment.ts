@@ -20,7 +20,7 @@ export class Comment {
     @Column("character varying", { name: "content", length: 2000 })
     content: string;
 
-    @Column("date", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
+    @Column("timestamp", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
     createdAt: string;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.comment)

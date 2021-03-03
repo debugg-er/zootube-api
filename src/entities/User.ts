@@ -4,7 +4,6 @@ import {
     BeforeUpdate,
     Column,
     Entity,
-    getRepository,
     Index,
     OneToMany,
     PrimaryGeneratedColumn,
@@ -89,6 +88,7 @@ export class User {
     async signJWT(): Promise<string> {
         return new Promise((resolve, reject) => {
             const payload: IUserToken = {
+                id: this.id,
                 username: this.username,
                 firstName: this.firstName,
                 lastName: this.lastName,

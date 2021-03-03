@@ -1,3 +1,5 @@
+import { promises as fsp } from "fs";
+import * as _ from "lodash";
 import { Request, Response, NextFunction } from "express";
 import { AssertionError } from "chai";
 import env from "../providers/env";
@@ -13,6 +15,10 @@ export async function clientErrorHandler(
 ) {
     if (env.NODE_ENV === "development") {
         console.log(err);
+    }
+
+    if (req.files) {
+        await Promise.all(_.values(req.files).map((file) => fsp.unlink(file.path)));
     }
 
     if (err instanceof ModelError) {

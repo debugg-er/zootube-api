@@ -11,7 +11,7 @@ export class WatchedVideo {
     @Column("character", { primary: true, name: "video_id", length: 10 })
     videoId: string;
 
-    @Column("date", { name: "watched_at" })
+    @Column("timestamp", { name: "watched_at" })
     watchedAt: string;
 
     @ManyToOne(() => User, (users) => users.watchedVideos, {
