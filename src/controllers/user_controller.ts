@@ -1,13 +1,22 @@
-import { expect } from "chai";
-import { Request, Response } from "express";
+import * as fs from "fs";
+import * as path from "path";
+import * as request from "request-promise";
+import * as sharp from "sharp";
+import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
+import { expect } from "chai";
+
+import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
-import { mustInRange } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { isBinary, mustExistOne } from "../decorators/validate_decorators";
+import { mustInRange } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
-import { User } from "../entities/User";
 import { Video } from "../entities/Video";
+import { defaultAvatarPath, defaultIconPath, User } from "../entities/User";
+import { randomString } from "../utils/string_function";
+
+const tempPath = path.join(__dirname, "../../tmp");
 
 class UserController {
     @asyncHandler
@@ -209,13 +218,79 @@ class UserController {
         });
     }
 
-    // @asyncHandler
-    // @mustExistOne("body.firstName", "body.lastName", "body.female", "files.avatar")
-    // @isBinary("body.female")
-    // public async updateProfile(req: Request, res: Response) {
-    //     const { firstName, lastName, female } = req.body;
-    //     const { avatar } = req.files;
-    // }
+    @asyncHandler
+    @mustExistOne("body.firstName", "body.lastName", "body.female", "files.avatar")
+    @isBinary("body.female")
+    public async updateProfile(req: Request, res: Response, next: NextFunction) {
+        const { firstName, lastName, female } = req.body;
+        const { avatar } = req.files;
+
+        const userRepository = getRepository(User);
+
+        const user = await userRepository.findOne(req.local.auth.id);
+
+        user.firstName = firstName || user.firstName;
+        user.lastName = lastName || user.lastName;
+
+        if (female !== undefined) {
+            user.female = female === "1";
+        }
+
+        if (avatar) {
+            expect(avatar.mimetype, "400:invalid file").to.match(/image/);
+
+            const iconName = randomString(32) + ".jpg";
+            const iconPath = path.join(tempPath, iconName);
+
+            await sharp(avatar.path).resize(200).jpeg().toFile(iconPath);
+
+            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
+                formData: {
+                    file: {
+                        value: fs.createReadStream(avatar.path),
+                        options: {
+                            filename: avatar.name,
+                            contentType: avatar.mimetype,
+                        },
+                    },
+                },
+            });
+            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
+                formData: {
+                    file: {
+                        value: fs.createReadStream(iconPath),
+                        options: {
+                            filename: iconName,
+                            contentType: "image/jpeg",
+                        },
+                    },
+                },
+            });
+
+            if (user.avatarPath !== defaultAvatarPath) {
+                await request.delete(env.STATIC_SERVER_ENDPOINT + user.avatarPath);
+            }
+            if (user.iconPath !== defaultIconPath) {
+                await request.delete(env.STATIC_SERVER_ENDPOINT + user.iconPath);
+            }
+
+            user.avatarPath = "/photos/" + avatar.name;
+            user.iconPath = "/photos/" + iconName;
+
+            await fs.promises.unlink(iconPath);
+        }
+
+        await userRepository.save(user);
+
+        delete user.password;
+        delete user.tempPassword;
+
+        res.status(200).json({
+            data: user,
+        });
+
+        next();
+    }
 }
 
 export default new UserController();

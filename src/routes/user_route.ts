@@ -3,6 +3,8 @@ import * as express from "express";
 import authController from "../controllers/auth_controller";
 import userController from "../controllers/user_controller";
 
+import multipartMiddleware from "../middlewares/multipart_middleware";
+
 const router = express.Router();
 
 router.use(express.json());
@@ -15,5 +17,13 @@ router.get("/subscribers", authController.authorize, userController.getSubscribe
 
 router.get("/:username/videos", userController.getUserVideos);
 router.get("/:username/profile", userController.getUserProfile);
+
+router.patch(
+    "/",
+    authController.authorize,
+    multipartMiddleware.storeUploadFiles("avatar"),
+    userController.updateProfile,
+    multipartMiddleware.removeUploadedFiles,
+);
 
 export default router;

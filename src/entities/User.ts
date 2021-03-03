@@ -23,6 +23,9 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 
+export const defaultAvatarPath = "/photos/default-avatar.jpg";
+export const defaultIconPath = "/photos/default-icon.jpg";
+
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
 @Entity("users", { schema: "public" })
@@ -47,14 +50,14 @@ export class User {
 
     @Column("character varying", {
         name: "avatar_path",
-        default: "/photos/default-avatar.jpg",
+        default: defaultAvatarPath,
         length: 128,
     })
     avatarPath: string;
 
     @Column("character varying", {
         name: "icon_path",
-        default: "/photos/default-icon.jpg",
+        default: defaultIconPath,
         length: 128,
     })
     iconPath: string;
