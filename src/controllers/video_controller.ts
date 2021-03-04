@@ -230,21 +230,29 @@ class VideoController {
     }
 
     @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
     public async getWatchedVideos(req: Request, res: Response) {
+        const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const videos = await getRepository(Video)
-            .createQueryBuilder("videos")
+        const watchedHistories = await getRepository(WatchedVideo)
+            .createQueryBuilder("watchedVideos")
+            .leftJoinAndSelect("watchedVideos.video", "videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .innerJoin("videos.watchedVideos", "watchedVideos")
-            .where("watchedVideos.userId = :userId", { userId: req.local.auth.id })
-            .orderBy("videos.uploadedAt", "DESC")
+            .where({ userId: id })
+            .orderBy("watchedVideos.watchedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
+
+        const videos = watchedHistories.map((watchedVideo) => ({
+            ...watchedVideo.video,
+            watchedAt: watchedVideo.watchedAt,
+        }));
 
         res.status(200).json({
             data: videos,
