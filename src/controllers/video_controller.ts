@@ -16,6 +16,7 @@ import extractFrame from "../utils/extract_frame";
 import { VideoLike } from "../entities/VideoLike";
 import { mustInRange } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
+import { WatchedVideo } from "../entities/WatchedVideo";
 
 const tempPath = path.join(__dirname, "../../tmp");
 const listRegex = /^[a-zA-Z]([a-zA-Z,]*[a-zA-z])?$/;
@@ -125,6 +126,36 @@ class VideoController {
         });
 
         await videoRepository.update(video.id, { views: video.views + 1 });
+
+        // store history if user logged in
+        if (req.local.auth) {
+            const { id } = req.local.auth;
+            const watchedVideoRepository = getRepository(WatchedVideo);
+
+            const watchedVideo = await watchedVideoRepository.findOne({
+                userId: id,
+                videoId: video_id,
+            });
+
+            // update watchedVideo timestamps if it was watched before
+            if (watchedVideo) {
+                watchedVideo.watchedAt = new Date();
+                await watchedVideoRepository.update(
+                    { userId: id, videoId: video_id },
+                    { watchedAt: new Date() },
+                );
+
+                // if not, insert new watchedVideo to db
+            } else {
+                await watchedVideoRepository.insert(
+                    watchedVideoRepository.create({
+                        userId: id,
+                        videoId: video_id,
+                        watchedAt: new Date(),
+                    }),
+                );
+            }
+        }
     }
 
     @asyncHandler
