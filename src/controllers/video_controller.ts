@@ -1,25 +1,24 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as request from "request-promise";
-import getVideoDuration from "../utils/get_video_duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { createQueryBuilder, getRepository, In } from "typeorm";
 
-import asyncHandler from "../decorators/async_handler";
 import env from "../providers/env";
-import { Video } from "../entities/Video";
-import { Category } from "../entities/Category";
+import { listRegex } from "../commons/regexs";
+import asyncHandler from "../decorators/async_handler";
 import { mustExist, mustExistOne } from "../decorators/validate_decorators";
-import { randomString } from "../utils/string_function";
-import extractFrame from "../utils/extract_frame";
-import { VideoLike } from "../entities/VideoLike";
 import { mustInRange } from "../decorators/assert_decorators";
-import { Subscription } from "../entities/Subscription";
+import { Category } from "../entities/Category";
+import { Video } from "../entities/Video";
+import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
+import extractFrame from "../utils/extract_frame";
+import getVideoDuration from "../utils/get_video_duration";
+import { randomString } from "../utils/string_function";
 
 const tempPath = path.join(__dirname, "../../tmp");
-const listRegex = /^[a-zA-Z]([a-zA-Z,]*[a-zA-z])?$/;
 
 class VideoController {
     @asyncHandler
