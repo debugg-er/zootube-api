@@ -79,10 +79,13 @@ class VideoController {
             views: 0,
             uploadedAt: uploadedAt,
             uploadedBy: { id: req.local.auth.id },
-            categories: await getRepository(Category).find({
-                where: { category: In(categories.split(",")) },
-            }),
         });
+
+        if (categories) {
+            _video.categories = await getRepository(Category).find({
+                where: { category: In(categories.split(",")) },
+            });
+        }
 
         await videoRepository.insert(_video);
 
