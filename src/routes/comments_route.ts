@@ -10,6 +10,8 @@ const router = express.Router({ mergeParams: true });
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments);
+
 router.post(
     "/",
     authController.authorize,

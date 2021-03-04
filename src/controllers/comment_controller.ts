@@ -4,6 +4,7 @@ import { getRepository } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
 import { mustExist } from "../decorators/validate_decorators";
+import { mustInRange } from "../decorators/assert_decorators";
 import { Comment } from "../entities/Comment";
 
 class CommentController {
@@ -56,6 +57,31 @@ class CommentController {
 
         res.status(201).json({
             data: newComment,
+        });
+    }
+
+    @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getVideoComments(req: Request, res: Response) {
+        const { video_id } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const comments = await getRepository(Comment)
+            .createQueryBuilder("comments")
+            .leftJoin("comments.user", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .loadRelationCountAndMap("comments.totalReplies", "comments.comments")
+            .where("comments.video_id = :videoId", { videoId: video_id })
+            .andWhere("comments.parent_id IS NULL")
+            .orderBy("comments.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: comments,
         });
     }
 }
