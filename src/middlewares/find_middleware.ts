@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { getRepository } from "typeorm";
 
 import asyncHander from "../decorators/async_handler";
+import { Comment } from "../entities/Comment";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
 
@@ -13,6 +14,16 @@ class FindMiddleware {
 
         const countVideo = await getRepository(Video).count({ id: video_id });
         expect(countVideo, "404:video not found").to.equal(1);
+
+        next();
+    }
+
+    @asyncHander
+    public async isCommentExist(req: Request, res: Response, next: NextFunction) {
+        const comment_id = +req.params.comment_id;
+
+        const countVideo = await getRepository(Comment).count({ id: comment_id });
+        expect(countVideo, "404:comment not found").to.equal(1);
 
         next();
     }

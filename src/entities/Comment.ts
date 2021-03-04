@@ -21,7 +21,7 @@ export class Comment {
     content: string;
 
     @Column("timestamp", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
-    createdAt: string;
+    createdAt: Date;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.comment)
     commentLikes: CommentLike[];
@@ -42,4 +42,6 @@ export class Comment {
     @ManyToOne(() => Video, (videos) => videos.comments, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
+
+    totalReplies?: number;
 }
