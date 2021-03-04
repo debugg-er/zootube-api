@@ -6,6 +6,7 @@ import asyncHandler from "../decorators/async_handler";
 import { mustExist } from "../decorators/validate_decorators";
 import { mustInRange } from "../decorators/assert_decorators";
 import { Comment } from "../entities/Comment";
+import { CommentLike } from "../entities/CommentLike";
 
 class CommentController {
     @asyncHandler
@@ -107,6 +108,43 @@ class CommentController {
 
         res.status(200).json({
             data: comments,
+        });
+    }
+
+    @asyncHandler
+    public async reactComment(req: Request, res: Response) {
+        const { reaction } = req.body;
+        const comment_id = +req.params.comment_id;
+
+        expect(reaction, "400:invalid parameters").to.be.oneOf(["like", "dislike"]);
+
+        const commentLikeRepository = getRepository(CommentLike);
+        const isLike = reaction === "like";
+
+        const videoLike = commentLikeRepository.create({
+            commentId: comment_id,
+            userId: req.local.auth.id,
+            like: isLike,
+        });
+
+        await commentLikeRepository.save(videoLike);
+
+        res.status(200).json({
+            data: { message: isLike ? "liked" : "disliked" },
+        });
+    }
+
+    @asyncHandler
+    public async deleteCommentReaction(req: Request, res: Response) {
+        const comment_id = +req.params.comment_id;
+
+        await getRepository(CommentLike).delete({
+            commentId: comment_id,
+            userId: req.local.auth.id,
+        });
+
+        res.status(200).json({
+            data: { message: "deleted reaction" },
         });
     }
 }

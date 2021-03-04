@@ -35,4 +35,18 @@ router.post(
     commentController.replyComment,
 );
 
+router.post(
+    "/:comment_id/reaction",
+    authController.authorize,
+    findMiddleware.isCommentExist,
+    commentController.reactComment,
+);
+
+router.delete(
+    "/:comment_id/reaction",
+    authController.authorize,
+    findMiddleware.isCommentExist,
+    commentController.deleteCommentReaction,
+);
+
 export default router;
