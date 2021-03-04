@@ -204,15 +204,21 @@ class VideoController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const subscriptions = await getRepository(Subscription).find({ subscriberId: id });
-        const subscriptionIds = subscriptions.map((subscription) => subscription.userId);
-
         const videos = await getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .where("users.id IN (:...userId)", { userId: subscriptionIds })
+            .innerJoin(
+                (subquery) => {
+                    return subquery
+                        .select("user_id")
+                        .from("subscriptions", "sub")
+                        .where("sub.subscriber_id = :subscriberId", { subscriberId: id });
+                },
+                "subscriptions",
+                "subscriptions.user_id = videos.uploadedBy",
+            )
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
