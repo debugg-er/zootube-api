@@ -1,22 +1,24 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as request from "request-promise";
-import getVideoDuration from "../utils/get_video_duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { createQueryBuilder, getRepository, In } from "typeorm";
 
-import asyncHandler from "../decorators/async_handler";
 import env from "../providers/env";
-import { Video } from "../entities/Video";
-import { Category } from "../entities/Category";
+import { listRegex } from "../commons/regexs";
+import asyncHandler from "../decorators/async_handler";
 import { mustExist, mustExistOne } from "../decorators/validate_decorators";
-import { randomString } from "../utils/string_function";
-import extractFrame from "../utils/extract_frame";
+import { mustInRange } from "../decorators/assert_decorators";
+import { Category } from "../entities/Category";
+import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
+import { WatchedVideo } from "../entities/WatchedVideo";
+import extractFrame from "../utils/extract_frame";
+import getVideoDuration from "../utils/get_video_duration";
+import { randomString } from "../utils/string_function";
 
 const tempPath = path.join(__dirname, "../../tmp");
-const listRegex = /^[a-zA-Z]([a-zA-Z,]*[a-zA-z])?$/;
 
 class VideoController {
     @asyncHandler
@@ -97,7 +99,9 @@ class VideoController {
     public async getVideo(req: Request, res: Response) {
         const { video_id } = req.params;
 
-        const video = await getRepository(Video)
+        const videoRepository = getRepository(Video);
+
+        const video = await videoRepository
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
@@ -119,6 +123,38 @@ class VideoController {
         res.status(200).json({
             data: { ...video, ...likeAndDislike },
         });
+
+        await videoRepository.update(video.id, { views: video.views + 1 });
+
+        // store history if user logged in
+        if (req.local.auth) {
+            const { id } = req.local.auth;
+            const watchedVideoRepository = getRepository(WatchedVideo);
+
+            const watchedVideo = await watchedVideoRepository.findOne({
+                userId: id,
+                videoId: video_id,
+            });
+
+            // update watchedVideo timestamps if it was watched before
+            if (watchedVideo) {
+                watchedVideo.watchedAt = new Date();
+                await watchedVideoRepository.update(
+                    { userId: id, videoId: video_id },
+                    { watchedAt: new Date() },
+                );
+
+                // if not, insert new watchedVideo to db
+            } else {
+                await watchedVideoRepository.insert(
+                    watchedVideoRepository.create({
+                        userId: id,
+                        videoId: video_id,
+                        watchedAt: new Date(),
+                    }),
+                );
+            }
+        }
     }
 
     @asyncHandler
@@ -160,32 +196,11 @@ class VideoController {
     }
 
     @asyncHandler
-    public async getVideos(req: Request, res: Response) {
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getSubscriptionVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
-        const limit = +req.query.offset || 30;
-
-        const videos = await getRepository(Video).find({
-            relations: ["categories"],
-            where: { uploadedBy: { id } },
-            order: { uploadedAt: "DESC" },
-            skip: offset,
-            take: limit,
-        });
-
-        // videos.forEach((video) => {
-        //     video.videoPath = env.STATIC_SERVER_ENDPOINT + video.videoPath;
-        //     video.thumbnailPath = env.STATIC_SERVER_ENDPOINT + video.thumbnailPath;
-        // });
-
-        res.status(200).json({
-            data: videos,
-        });
-    }
-
-    @asyncHandler
-    public async getSubscriptionVideos(req: Request, res: Response) {
-        const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
         const videos = await getRepository(Video)
@@ -193,7 +208,16 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .where("users.id = :userId", { userId: req.local.auth.id })
+            .innerJoin(
+                (subquery) => {
+                    return subquery
+                        .select("user_id")
+                        .from("subscriptions", "sub")
+                        .where("sub.subscriber_id = :subscriberId", { subscriberId: id });
+                },
+                "subscriptions",
+                "subscriptions.user_id = videos.uploadedBy",
+            )
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -205,21 +229,29 @@ class VideoController {
     }
 
     @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
     public async getWatchedVideos(req: Request, res: Response) {
+        const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const videos = await getRepository(Video)
-            .createQueryBuilder("videos")
+        const watchedHistories = await getRepository(WatchedVideo)
+            .createQueryBuilder("watchedVideos")
+            .leftJoinAndSelect("watchedVideos.video", "videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
-            .innerJoin("videos.watchedVideos", "watchedVideos")
-            .where("watchedVideos.userId = :userId", { userId: req.local.auth.id })
-            .orderBy("videos.uploadedAt", "DESC")
+            .where({ userId: id })
+            .orderBy("watchedVideos.watchedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
+
+        const videos = watchedHistories.map((watchedVideo) => ({
+            ...watchedVideo.video,
+            watchedAt: watchedVideo.watchedAt,
+        }));
 
         res.status(200).json({
             data: videos,
