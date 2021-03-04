@@ -84,6 +84,31 @@ class CommentController {
             data: comments,
         });
     }
+
+    @asyncHandler
+    @mustInRange("query.offset", 0, Infinity)
+    @mustInRange("query.limit", 0, 100)
+    public async getCommentReplies(req: Request, res: Response) {
+        const { video_id } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+        const comment_id = +req.params.comment_id;
+
+        const comments = await getRepository(Comment)
+            .createQueryBuilder("comments")
+            .leftJoin("comments.user", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .where("comments.video_id = :videoId", { videoId: video_id })
+            .andWhere("comments.parent_id = :parentId", { parentId: comment_id })
+            .orderBy("comments.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: comments,
+        });
+    }
 }
 
 export default new CommentController();

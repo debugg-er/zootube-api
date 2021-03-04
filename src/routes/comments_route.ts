@@ -12,6 +12,14 @@ router.use(express.urlencoded({ extended: true }));
 
 router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments);
 
+router.get(
+    "/:comment_id",
+    authController.authorize,
+    findMiddleware.isVideoExist,
+    findMiddleware.isCommentExist,
+    commentController.getCommentReplies,
+);
+
 router.post(
     "/",
     authController.authorize,
