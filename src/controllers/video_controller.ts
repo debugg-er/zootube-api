@@ -31,7 +31,7 @@ class VideoController {
         expect(categories, "400:invalid categories").to.match(listRegex);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
-        const duration = Math.floor(await getVideoDuration(video.path));
+        const duration = await getVideoDuration(video.path);
         const thumbnailName = randomString(32) + ".png";
 
         await extractFrame(video.path, {
@@ -294,7 +294,7 @@ class VideoController {
             video.thumbnailPath = "/thumbnails/" + thumbnail.name;
         }
 
-        await getRepository(Video).update({ id: video.id }, video);
+        await getRepository(Video).save(video);
 
         res.status(200).json({
             data: video,
