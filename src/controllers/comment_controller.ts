@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { getRepository } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
-import { mustExist } from "../decorators/validate_decorators";
+import { mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRange } from "../decorators/assert_decorators";
 import { Comment } from "../entities/Comment";
 import { CommentLike } from "../entities/CommentLike";
@@ -145,6 +145,32 @@ class CommentController {
 
         res.status(200).json({
             data: { message: "deleted reaction" },
+        });
+    }
+
+    @asyncHandler
+    @mustExistOne("body.content")
+    public async updateComment(req: Request, res: Response) {
+        const { content } = req.body;
+        const { comment } = req.local;
+
+        comment.content = content;
+
+        await getRepository(Comment).update({ id: comment.id }, comment);
+
+        res.status(200).json({
+            data: comment,
+        });
+    }
+
+    @asyncHandler
+    public async deleteComment(req: Request, res: Response) {
+        const { comment } = req.local;
+
+        await getRepository(Comment).delete(comment);
+
+        res.status(200).json({
+            data: { message: "deleted comment" },
         });
     }
 }

@@ -4,6 +4,7 @@ import authController from "../controllers/auth_controller";
 import commentController from "../controllers/comment_controller";
 
 import findMiddleware from "../middlewares/find_middleware";
+import identifyMiddleware from "../middlewares/identify_middleware";
 
 const router = express.Router({ mergeParams: true });
 
@@ -47,6 +48,20 @@ router.delete(
     authController.authorize,
     findMiddleware.isCommentExist,
     commentController.deleteCommentReaction,
+);
+
+router.patch(
+    "/:comment_id",
+    authController.authorize,
+    identifyMiddleware.isOwnComment,
+    commentController.updateComment,
+);
+
+router.delete(
+    "/:comment_id",
+    authController.authorize,
+    identifyMiddleware.isOwnComment,
+    commentController.deleteComment,
 );
 
 export default router;
