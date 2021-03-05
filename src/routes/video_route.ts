@@ -16,10 +16,15 @@ router.use(express.urlencoded({ extended: true }));
 
 router.use("/:video_id(\\w{10})/comments", commentRoute);
 
-router.get("/:video_id(\\w{10})", authController.authorizeIfGiven, videoController.getVideo);
-
 router.get("/subscription", authController.authorize, videoController.getSubscriptionVideos);
 router.get("/watched", authController.authorize, videoController.getWatchedVideos);
+
+router.get(
+    "/:video_id(\\w{10})",
+    authController.authorizeIfGiven,
+    findMiddleware.isVideoExist,
+    videoController.getVideo,
+);
 
 router.post(
     "/:video_id(\\w{10})/reaction",
