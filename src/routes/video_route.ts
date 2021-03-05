@@ -1,5 +1,7 @@
 import * as express from "express";
 
+import commentRoute from "./comments_route";
+
 import authController from "../controllers/auth_controller";
 import videoController from "../controllers/video_controller";
 
@@ -11,6 +13,8 @@ const router = express.Router();
 
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
+
+router.use("/:video_id(\\w{10})/comments", commentRoute);
 
 router.get("/:video_id(\\w{10})", authController.authorizeIfGiven, videoController.getVideo);
 
