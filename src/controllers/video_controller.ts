@@ -294,7 +294,7 @@ class VideoController {
             video.thumbnailPath = "/thumbnails/" + thumbnail.name;
         }
 
-        await getRepository(Video).update({ id: video.id }, video);
+        await getRepository(Video).save(video);
 
         res.status(200).json({
             data: video,
