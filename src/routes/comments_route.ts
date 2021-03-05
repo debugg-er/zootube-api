@@ -14,7 +14,7 @@ router.use(express.urlencoded({ extended: true }));
 router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments);
 
 router.get(
-    "/:comment_id",
+    "/:comment_id(\\d+)",
     authController.authorize,
     findMiddleware.isVideoExist,
     findMiddleware.isCommentExist,
@@ -29,7 +29,7 @@ router.post(
 );
 
 router.post(
-    "/:comment_id",
+    "/:comment_id(\\d+)",
     authController.authorize,
     findMiddleware.isVideoExist,
     findMiddleware.isCommentExist,
@@ -37,28 +37,28 @@ router.post(
 );
 
 router.post(
-    "/:comment_id/reaction",
+    "/:comment_id(\\d+)/reaction",
     authController.authorize,
     findMiddleware.isCommentExist,
     commentController.reactComment,
 );
 
 router.delete(
-    "/:comment_id/reaction",
+    "/:comment_id(\\d+)/reaction",
     authController.authorize,
     findMiddleware.isCommentExist,
     commentController.deleteCommentReaction,
 );
 
 router.patch(
-    "/:comment_id",
+    "/:comment_id(\\d+)",
     authController.authorize,
     identifyMiddleware.isOwnComment,
     commentController.updateComment,
 );
 
 router.delete(
-    "/:comment_id",
+    "/:comment_id(\\d+)",
     authController.authorize,
     identifyMiddleware.isOwnComment,
     commentController.deleteComment,

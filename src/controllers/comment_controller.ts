@@ -96,7 +96,6 @@ class CommentController {
     @mustInRange("query.offset", 0, Infinity)
     @mustInRange("query.limit", 0, 100)
     public async getCommentReplies(req: Request, res: Response) {
-        const { video_id } = req.params;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
         const comment_id = +req.params.comment_id;
@@ -111,8 +110,7 @@ class CommentController {
             .loadRelationCountAndMap("comments.dislike", "comments.commentLikes", "b", (qb) =>
                 qb.andWhere("b.like = false"),
             )
-            .where("comments.video_id = :videoId", { videoId: video_id })
-            .andWhere("comments.parent_id = :parentId", { parentId: comment_id })
+            .where("comments.parent_id = :parentId", { parentId: comment_id })
             .orderBy("comments.createdAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -124,6 +122,7 @@ class CommentController {
     }
 
     @asyncHandler
+    @mustExist("body.reaction")
     public async reactComment(req: Request, res: Response) {
         const { reaction } = req.body;
         const comment_id = +req.params.comment_id;
