@@ -3,7 +3,7 @@ import * as path from "path";
 import * as request from "request-promise";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
-import { createQueryBuilder, getRepository, In } from "typeorm";
+import { getRepository, In } from "typeorm";
 
 import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
@@ -109,22 +109,19 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath"])
+            .loadRelationCountAndMap("videos.like", "videos.videoLikes", "a", (qb) =>
+                qb.andWhere("a.like = true"),
+            )
+            .loadRelationCountAndMap("videos.dislike", "videos.videoLikes", "a", (qb) =>
+                qb.andWhere("a.like = false"),
+            )
             .where({ id: video_id })
             .getOne();
 
         expect(video, "404:video not found").to.exist;
 
-        const likeAndDislike = await createQueryBuilder("video_likes")
-            .select('SUM(CASE WHEN "like" = true THEN 1 ELSE 0 END)::INT', "like")
-            .addSelect('SUM(CASE WHEN "like" = false THEN 1 ELSE 0 END)::INT', "dislike")
-            .where("video_id = :videoId", { videoId: video_id })
-            .getRawOne();
-
-        likeAndDislike.like = likeAndDislike.like || 0;
-        likeAndDislike.dislike = likeAndDislike.dislike || 0;
-
         res.status(200).json({
-            data: { ...video, ...likeAndDislike },
+            data: video,
         });
 
         await videoRepository.update(video.id, { views: video.views + 1 });
