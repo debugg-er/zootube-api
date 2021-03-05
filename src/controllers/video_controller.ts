@@ -31,7 +31,7 @@ class VideoController {
         expect(categories, "400:invalid categories").to.match(listRegex);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
-        const duration = Math.floor(await getVideoDuration(video.path));
+        const duration = await getVideoDuration(video.path);
         const thumbnailName = randomString(32) + ".png";
 
         await extractFrame(video.path, {
