@@ -74,6 +74,12 @@ class CommentController {
             .leftJoin("comments.user", "users")
             .addSelect(["users.username", "users.iconPath"])
             .loadRelationCountAndMap("comments.totalReplies", "comments.comments")
+            .loadRelationCountAndMap("comments.like", "comments.commentLikes", "a", (qb) =>
+                qb.andWhere("a.like = true"),
+            )
+            .loadRelationCountAndMap("comments.dislike", "comments.commentLikes", "b", (qb) =>
+                qb.andWhere("b.like = false"),
+            )
             .where("comments.video_id = :videoId", { videoId: video_id })
             .andWhere("comments.parent_id IS NULL")
             .orderBy("comments.createdAt", "DESC")
@@ -99,6 +105,12 @@ class CommentController {
             .createQueryBuilder("comments")
             .leftJoin("comments.user", "users")
             .addSelect(["users.username", "users.iconPath"])
+            .loadRelationCountAndMap("comments.like", "comments.commentLikes", "a", (qb) =>
+                qb.andWhere("a.like = true"),
+            )
+            .loadRelationCountAndMap("comments.dislike", "comments.commentLikes", "b", (qb) =>
+                qb.andWhere("b.like = false"),
+            )
             .where("comments.video_id = :videoId", { videoId: video_id })
             .andWhere("comments.parent_id = :parentId", { parentId: comment_id })
             .orderBy("comments.createdAt", "DESC")
