@@ -9,7 +9,7 @@ import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { mustExist, mustExistOne } from "../decorators/validate_decorators";
-import { mustInRange } from "../decorators/assert_decorators";
+import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
 import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
@@ -196,8 +196,8 @@ class VideoController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getSubscriptionVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
@@ -229,8 +229,8 @@ class VideoController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getWatchedVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;

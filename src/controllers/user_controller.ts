@@ -10,7 +10,7 @@ import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isBinaryIfExist, mustExistOne } from "../decorators/validate_decorators";
-import { mustInRange } from "../decorators/assert_decorators";
+import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
 import { defaultAvatarPath, defaultIconPath, User } from "../entities/User";
@@ -88,8 +88,8 @@ class UserController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getOwnVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
         const categories = req.query.categories as string;
@@ -126,8 +126,8 @@ class UserController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getUserVideos(req: Request, res: Response) {
         const { username } = req.params;
         const categories = req.query.categories as string;
@@ -166,8 +166,8 @@ class UserController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getSubscriptions(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
@@ -190,8 +190,8 @@ class UserController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getSubscribers(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;

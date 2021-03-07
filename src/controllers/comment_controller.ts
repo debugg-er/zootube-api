@@ -4,7 +4,7 @@ import { getRepository } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
 import { mustExist, mustExistOne } from "../decorators/validate_decorators";
-import { mustInRange } from "../decorators/assert_decorators";
+import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Comment } from "../entities/Comment";
 import { CommentLike } from "../entities/CommentLike";
 
@@ -62,8 +62,8 @@ class CommentController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getVideoComments(req: Request, res: Response) {
         const { video_id } = req.params;
         const offset = +req.query.offset || 0;
@@ -93,8 +93,8 @@ class CommentController {
     }
 
     @asyncHandler
-    @mustInRange("query.offset", 0, Infinity)
-    @mustInRange("query.limit", 0, 100)
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
     public async getCommentReplies(req: Request, res: Response) {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
