@@ -9,7 +9,7 @@ import { expect } from "chai";
 import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
-import { isBinary, mustExistOne } from "../decorators/validate_decorators";
+import { isBinaryIfExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRange } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
@@ -220,7 +220,7 @@ class UserController {
 
     @asyncHandler
     @mustExistOne("body.firstName", "body.lastName", "body.female", "files.avatar")
-    @isBinary("body.female")
+    @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
         const { firstName, lastName, female } = req.body;
         const { avatar } = req.files;
