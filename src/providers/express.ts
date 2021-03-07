@@ -2,6 +2,7 @@ import * as express from "express";
 import * as morgan from "morgan";
 import env from "./env";
 
+import searchRoute from "../routes/search_route";
 import authRoute from "../routes/auth_route";
 import videoRoute from "../routes/video_route";
 import userRoute from "../routes/user_route";
@@ -20,6 +21,7 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use("/search", searchRoute);
 app.use("/auth", authRoute);
 app.use("/videos", videoRoute);
 app.use("/users", userRoute);
