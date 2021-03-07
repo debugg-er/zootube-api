@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { getRepository } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
-import { mustExist, mustExistOne } from "../decorators/validate_decorators";
+import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Comment } from "../entities/Comment";
 import { CommentLike } from "../entities/CommentLike";
@@ -62,6 +62,7 @@ class CommentController {
     }
 
     @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getVideoComments(req: Request, res: Response) {
@@ -93,6 +94,7 @@ class CommentController {
     }
 
     @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getCommentReplies(req: Request, res: Response) {

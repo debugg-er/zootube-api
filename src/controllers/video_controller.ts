@@ -8,8 +8,8 @@ import { getRepository, In } from "typeorm";
 import env from "../providers/env";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
-import { mustExist, mustExistOne } from "../decorators/validate_decorators";
-import { mustInRangeIfExist } from "../decorators/assert_decorators";
+import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
+import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
 import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
@@ -23,12 +23,12 @@ const tempPath = path.join(__dirname, "../../tmp");
 class VideoController {
     @asyncHandler
     @mustExist("body.title", "files.video")
+    @mustMatchIfExist("body.categories", listRegex)
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
         const { title, description, categories } = req.body;
         const { video } = req.files;
 
         expect(video.mimetype, "400:invalid video").to.match(/^video/);
-        expect(categories, "400:invalid categories").to.match(listRegex);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = await getVideoDuration(video.path);
@@ -196,6 +196,7 @@ class VideoController {
     }
 
     @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getSubscriptionVideos(req: Request, res: Response) {
@@ -229,6 +230,7 @@ class VideoController {
     }
 
     @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getWatchedVideos(req: Request, res: Response) {
@@ -260,6 +262,7 @@ class VideoController {
 
     @asyncHandler
     @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
+    @mustMatchIfExist("body.categories", listRegex)
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
         const { title, description, categories } = req.body;
         const { thumbnail } = req.files;
@@ -269,7 +272,6 @@ class VideoController {
         video.description = description || video.description;
 
         if (categories) {
-            expect(categories, "400:invalid categories").to.match(listRegex);
             video.categories = await getRepository(Category).find({
                 where: { category: In(categories.split(",")) },
             });
