@@ -67,6 +67,8 @@ class UserController {
             },
         );
 
+        expect(user, "404:user not found").to.exist;
+
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
             .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
             .where("user_id = :userId", { userId: user.id })
@@ -135,6 +137,8 @@ class UserController {
         const limit = +req.query.limit || 30;
 
         const user = await getRepository(User).findOne({ username }, { select: ["id"] });
+
+        expect(user, "404:user not found").to.exist;
 
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
