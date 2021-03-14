@@ -9,14 +9,14 @@ import { mustInRangeIfExist } from "../decorators/assert_decorators";
 class SearchController {
     @asyncHandler
     @mustExist("query.q")
-    @isDateFormatIfExist("query.maxUploadDate")
-    @isNumberIfExist("query.offset", "query.limit", "query.minDuration")
+    @isDateFormatIfExist("query.max_upload_date")
+    @isNumberIfExist("query.offset", "query.limit", "query.min_duration")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async searchVideos(req: Request, res: Response, next: NextFunction) {
         const q = req.query.q as string;
-        const maxUploadDate = req.query.maxUploadDate as string;
-        const minDuration = req.query.minDuration as string;
+        const max_upload_date = req.query.max_upload_date as string;
+        const min_duration = req.query.min_duration as string;
         const category = req.query.category as string;
         const sort = req.query.sort as string;
         const offset = +req.query.offset || 0;
@@ -31,15 +31,15 @@ class SearchController {
             .skip(offset)
             .take(limit);
 
-        if (minDuration) {
+        if (min_duration) {
             videoQueryBuilder = videoQueryBuilder.andWhere("videos.duration <= :minDuration", {
-                minDuration: +minDuration,
+                minDuration: +min_duration,
             });
         }
 
-        if (maxUploadDate) {
+        if (max_upload_date) {
             videoQueryBuilder = videoQueryBuilder.andWhere("videos.uploadedAt >= :maxUploadDate", {
-                maxUploadDate: new Date(maxUploadDate),
+                maxUploadDate: new Date(max_upload_date),
             });
         }
 

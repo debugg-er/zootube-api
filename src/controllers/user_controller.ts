@@ -217,18 +217,18 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.firstName", "body.lastName", "body.female", "files.avatar")
+    @mustExistOne("body.first_name", "body.last_name", "body.female", "files.avatar")
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
-        const { firstName, lastName, female } = req.body;
+        const { first_name, last_name, female } = req.body;
         const { avatar } = req.files;
 
         const userRepository = getRepository(User);
 
         const user = await userRepository.findOne(req.local.auth.id);
 
-        user.firstName = firstName || user.firstName;
-        user.lastName = lastName || user.lastName;
+        user.firstName = first_name || user.firstName;
+        user.lastName = last_name || user.lastName;
 
         if (female !== undefined) {
             user.female = female === "1";
