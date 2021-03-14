@@ -12,4 +12,8 @@ COPY . .
 
 RUN npm run build
 
+RUN wget https://raw.githubusercontent.com/eficode/wait-for/master/wait-for
+
+RUN chmod +x ./wait-for
+
 CMD ["npm", "start"]
