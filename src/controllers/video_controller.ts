@@ -158,6 +158,37 @@ class VideoController {
     }
 
     @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getVideos(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+        const category = req.query.category as string;
+
+        let videoQueryBuilder = getRepository(Video)
+            .createQueryBuilder("videos")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .leftJoinAndSelect("videos.categories", "categories")
+            .orderBy("videos.uploadedAt", "DESC")
+            .skip(offset)
+            .take(limit);
+
+        if (category) {
+            videoQueryBuilder = videoQueryBuilder.where("categories.category = :category", {
+                category: category,
+            });
+        }
+
+        const videos = await videoQueryBuilder.getMany();
+
+        res.status(200).json({
+            data: videos,
+        });
+    }
+
+    @asyncHandler
     @mustExist("body.reaction")
     public async reactVideo(req: Request, res: Response) {
         const { video_id } = req.params;

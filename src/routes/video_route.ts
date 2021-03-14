@@ -19,6 +19,8 @@ router.use("/:video_id(\\w{10})/comments", commentRoute);
 router.get("/subscription", authController.authorize, videoController.getSubscriptionVideos);
 router.get("/watched", authController.authorize, videoController.getWatchedVideos);
 
+router.get("/", videoController.getVideos);
+
 router.get(
     "/:video_id(\\w{10})",
     authController.authorizeIfGiven,
@@ -32,6 +34,7 @@ router.post(
     findMiddleware.isVideoExist,
     videoController.reactVideo,
 );
+
 router.delete(
     "/:video_id(\\w{10})/reaction",
     authController.authorize,
