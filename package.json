@@ -7,24 +7,42 @@
         "type": "git"
     },
     "dependencies": {
+        "bcrypt": "^5.0.0",
+        "busboy": "^0.3.1",
         "chai": "^4.2.0",
         "dotenv": "^8.2.0",
         "express": "^4.17.1",
+        "fluent-ffmpeg": "^2.1.2",
+        "jsonwebtoken": "^8.5.1",
         "lodash": "^4.17.21",
+        "morgan": "^1.10.0",
         "pg": "^8.5.1",
+        "request": "^2.88.2",
+        "request-promise": "^4.2.6",
+        "sharp": "^0.27.2",
         "typeorm": "^0.2.31"
     },
     "devDependencies": {
+        "@types/bcrypt": "^3.0.0",
+        "@types/busboy": "^0.2.3",
         "@types/chai": "^4.2.14",
         "@types/express": "^4.17.8",
+        "@types/fluent-ffmpeg": "^2.1.16",
+        "@types/jsonwebtoken": "^8.5.0",
         "@types/lodash": "^4.14.168",
+        "@types/morgan": "^1.9.2",
+        "@types/request-promise": "^4.1.47",
+        "@types/sharp": "^0.27.1",
+        "ts-node": "^9.1.1",
         "ts-node-dev": "^1.1.1",
         "typescript": "^4.0.3"
     },
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
         "start": "node ./build/index.js",
-        "build": "tsc"
+        "build": "tsc",
+        "migrate:up": "ts-node ./src/migrations/up.ts",
+        "migrate:down": "ts-node ./src/migrations/down.ts"
     },
     "author": "backy4rd",
     "license": "ISC"

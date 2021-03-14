@@ -11,8 +11,8 @@ export class WatchedVideo {
     @Column("character", { primary: true, name: "video_id", length: 10 })
     videoId: string;
 
-    @Column("date", { name: "watched_at" })
-    watchedAt: string;
+    @Column("timestamp", { name: "watched_at" })
+    watchedAt: Date;
 
     @ManyToOne(() => User, (users) => users.watchedVideos, {
         onDelete: "CASCADE",

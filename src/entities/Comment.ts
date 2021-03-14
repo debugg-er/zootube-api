@@ -20,8 +20,8 @@ export class Comment {
     @Column("character varying", { name: "content", length: 2000 })
     content: string;
 
-    @Column("date", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
-    createdAt: string;
+    @Column("timestamp with time zone", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
+    createdAt: Date;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.comment)
     commentLikes: CommentLike[];
@@ -42,4 +42,6 @@ export class Comment {
     @ManyToOne(() => Video, (videos) => videos.comments, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
+
+    totalReplies?: number;
 }
