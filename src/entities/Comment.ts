@@ -42,6 +42,4 @@ export class Comment {
     @ManyToOne(() => Video, (videos) => videos.comments, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
-
-    totalReplies?: number;
 }

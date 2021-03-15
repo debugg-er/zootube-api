@@ -19,10 +19,15 @@ class FindMiddleware {
     }
 
     @asyncHander
-    public async isCommentExist(req: Request, res: Response, next: NextFunction) {
+    public async isCommentExistInVideo(req: Request, res: Response, next: NextFunction) {
+        const { video_id } = req.params;
         const comment_id = +req.params.comment_id;
 
-        const countVideo = await getRepository(Comment).count({ id: comment_id });
+        const countVideo = await getRepository(Comment).count({
+            id: comment_id,
+            video: { id: video_id },
+        });
+
         expect(countVideo, "404:comment not found").to.equal(1);
 
         next();
