@@ -236,6 +236,9 @@ class UserController {
         if (avatar) {
             expect(avatar.mimetype, "400:invalid file").to.match(/image/);
 
+            // stop handle when user contain invalid property
+            user.validate();
+
             const iconName = randomString(32) + ".jpg";
             const iconPath = path.join(tempPath, iconName);
 
