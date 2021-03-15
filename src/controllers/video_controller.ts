@@ -87,7 +87,8 @@ class VideoController {
             });
         }
 
-        await videoRepository.insert(_video);
+        // use .save to also insert category entities
+        await videoRepository.save(_video);
 
         res.status(201).json({
             data: _video,
