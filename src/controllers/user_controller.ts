@@ -7,10 +7,9 @@ import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
 
 import env from "../providers/env";
-import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/validate_decorators";
-import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
+import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
 import { defaultAvatarPath, defaultIconPath, User } from "../entities/User";
@@ -93,10 +92,9 @@ class UserController {
     @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
-    @mustMatchIfExist("body.categories", listRegex)
     public async getOwnVideos(req: Request, res: Response) {
         const { id } = req.local.auth;
-        const categories = req.query.categories as string;
+        const category = req.query.category as string;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
@@ -111,11 +109,10 @@ class UserController {
             .take(limit);
 
         // add additional where clause if categories are required
-        if (categories) {
-            videosQueryBuilder = videosQueryBuilder.andWhere(
-                "categories.category IN (:...categories)",
-                { categories: categories.split(",") },
-            );
+        if (category) {
+            videosQueryBuilder = videosQueryBuilder.andWhere("categories.category = :category", {
+                category: category,
+            });
         }
 
         const videos = await videosQueryBuilder.getMany();
@@ -129,10 +126,9 @@ class UserController {
     @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
-    @mustMatchIfExist("body.categories", listRegex)
     public async getUserVideos(req: Request, res: Response) {
         const { username } = req.params;
-        const categories = req.query.categories as string;
+        const category = req.query.category as string;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
@@ -151,11 +147,10 @@ class UserController {
             .take(limit);
 
         // add additional where clause if categories are required
-        if (categories) {
-            videosQueryBuilder = videosQueryBuilder.andWhere(
-                "categories.category IN (:...categories)",
-                { categories: categories.split(",") },
-            );
+        if (category) {
+            videosQueryBuilder = videosQueryBuilder.andWhere("categories.category = :category", {
+                category: category,
+            });
         }
 
         const videos = await videosQueryBuilder.getMany();

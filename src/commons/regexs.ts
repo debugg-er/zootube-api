@@ -7,4 +7,4 @@ export const passwordRegex = /^\S{6,32}$/;
 export const urlPathRegex = /^(\/[a-zA-Z0-9.]+)+\b$/;
 export const jwtRegex = /^[A-Za-z]+ [A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/;
 
-export const listRegex = /^[a-zA-Z]([a-zA-Z,]*[a-zA-z])?$/;
+export const listRegex = /^[^,]+(,[^,]+)*?$/;

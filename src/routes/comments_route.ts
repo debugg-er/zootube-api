@@ -15,7 +15,6 @@ router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments)
 
 router.get(
     "/:comment_id(\\d+)",
-    authController.authorize,
     findMiddleware.isVideoExist,
     findMiddleware.isCommentExist,
     commentController.getCommentReplies,
