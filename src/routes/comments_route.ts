@@ -15,9 +15,7 @@ router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments)
 
 router.get(
     "/:comment_id(\\d+)",
-    authController.authorize,
-    findMiddleware.isVideoExist,
-    findMiddleware.isCommentExist,
+    findMiddleware.isCommentExistInVideo,
     commentController.getCommentReplies,
 );
 
@@ -31,28 +29,28 @@ router.post(
 router.post(
     "/:comment_id(\\d+)",
     authController.authorize,
-    findMiddleware.isVideoExist,
-    findMiddleware.isCommentExist,
+    findMiddleware.isCommentExistInVideo,
     commentController.replyComment,
 );
 
 router.post(
     "/:comment_id(\\d+)/reaction",
     authController.authorize,
-    findMiddleware.isCommentExist,
+    findMiddleware.isCommentExistInVideo,
     commentController.reactComment,
 );
 
 router.delete(
     "/:comment_id(\\d+)/reaction",
     authController.authorize,
-    findMiddleware.isCommentExist,
+    findMiddleware.isCommentExistInVideo,
     commentController.deleteCommentReaction,
 );
 
 router.patch(
     "/:comment_id(\\d+)",
     authController.authorize,
+    findMiddleware.isCommentExistInVideo,
     identifyMiddleware.isOwnComment,
     commentController.updateComment,
 );
@@ -60,6 +58,7 @@ router.patch(
 router.delete(
     "/:comment_id(\\d+)",
     authController.authorize,
+    findMiddleware.isCommentExistInVideo,
     identifyMiddleware.isOwnComment,
     commentController.deleteComment,
 );

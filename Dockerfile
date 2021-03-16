@@ -8,12 +8,12 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY . .
-
-RUN npm run build
-
 RUN wget https://raw.githubusercontent.com/eficode/wait-for/master/wait-for
 
 RUN chmod +x ./wait-for
+
+COPY . .
+
+RUN npm run build
 
 CMD ["npm", "start"]

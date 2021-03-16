@@ -8,7 +8,7 @@ export default {
     PORT:                   parseInt(process.env.PORT)          || 8080,
     DB_PORT:                parseInt(process.env.DB_PORT)       || 5432,
     DB_HOST:                process.env.DB_HOST                 || "127.0.0.1",
-    DB_USERNAME:            process.env.DB_USER                 || "postgres",
+    DB_USERNAME:            process.env.DB_USERNAME             || "postgres",
     DB_PASSWORD:            process.env.DB_PASSWORD             || null,
     DB_NAME:                process.env.DB_NAME                 || "test",
     SALT_ROUND:             parseInt(process.env.SALT_ROUND)    || 10,

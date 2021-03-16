@@ -87,7 +87,8 @@ class VideoController {
             });
         }
 
-        await videoRepository.insert(_video);
+        // use .save to also insert category entities
+        await videoRepository.save(_video);
 
         res.status(201).json({
             data: _video,
@@ -115,10 +116,9 @@ class VideoController {
             .loadRelationCountAndMap("videos.dislike", "videos.videoLikes", "a", (qb) =>
                 qb.andWhere("a.like = false"),
             )
+            .loadRelationCountAndMap("videos.comment", "videos.comments")
             .where({ id: video_id })
             .getOne();
-
-        expect(video, "404:video not found").to.exist;
 
         res.status(200).json({
             data: video,
