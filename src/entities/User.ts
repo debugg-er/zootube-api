@@ -95,6 +95,7 @@ export class User {
                 username: this.username,
                 firstName: this.firstName,
                 lastName: this.lastName,
+                iconPath: this.iconPath,
             };
 
             const option: jwt.SignOptions = {

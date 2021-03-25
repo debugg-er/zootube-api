@@ -8,7 +8,8 @@ export function mustExist(...requestKeyPaths: string[]) {
 
         descriptor.value = function (req: Request, res: Response, next: NextFunction) {
             const isAllExist = requestKeyPaths.every((keyPath) => {
-                return _.get(req, keyPath) !== undefined;
+                const value = _.get(req, keyPath);
+                return value !== undefined && value !== "";
             });
 
             expect(isAllExist, "400:missing parameter").to.be.true;
@@ -24,7 +25,8 @@ export function mustExistOne(...requestKeyPaths: string[]) {
 
         descriptor.value = function (req: Request, res: Response, next: NextFunction) {
             const isExistOne = requestKeyPaths.some((keyPath) => {
-                return _.get(req, keyPath) !== undefined;
+                const value = _.get(req, keyPath);
+                return value !== undefined && value !== "";
             });
 
             expect(isExistOne, "400:missing parameter").to.be.true;
