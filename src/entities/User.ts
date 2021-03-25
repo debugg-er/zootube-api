@@ -23,8 +23,8 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 
-export const defaultAvatarPath = "/photos/default-avatar.jpg";
-export const defaultIconPath = "/photos/default-icon.jpg";
+export const defaultAvatarPath = "/photos/default-avatar.png";
+export const defaultIconPath = "/photos/default-icon.png";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -95,6 +95,7 @@ export class User {
                 username: this.username,
                 firstName: this.firstName,
                 lastName: this.lastName,
+                iconPath: this.iconPath,
             };
 
             const option: jwt.SignOptions = {

@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(32) NOT NULL,
     last_name VARCHAR(32) NOT NULL,
     female BOOLEAN NOT NULL,
-    avatar_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-avatar.jpg',
-    icon_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-icon.jpg'
+    avatar_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-avatar.png',
+    icon_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-icon.png'
 );
 
 CREATE TABLE IF NOT EXISTS categories (
