@@ -232,7 +232,7 @@ class UserController {
             const iconName = randomString(32) + ".jpg";
             const iconPath = path.join(tempPath, iconName);
 
-            await sharp(avatar.path).resize(200).jpeg().toFile(iconPath);
+            await sharp(avatar.path).resize(64, 64).jpeg().toFile(iconPath);
 
             await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
                 formData: {
