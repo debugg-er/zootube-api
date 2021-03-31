@@ -43,7 +43,11 @@ class AuthController {
 
         const userRepository = getRepository(User);
 
-        const user = await userRepository.findOne({ username });
+        const user = await userRepository.findOne(
+            { username: username },
+            // signJWT require these fields
+            { select: ["id", "username", "password", "firstName", "lastName", "iconPath"] },
+        );
 
         expect(user, "400:username doesn't exists").to.exist;
 
@@ -99,6 +103,7 @@ class AuthController {
         const userRepository = getRepository(User);
 
         const user = await userRepository.findOne({ username }, { select: ["id", "password"] });
+
         const isMatch = await user.comparePassword(old_password);
         expect(isMatch, "400:password don't match").to.be.true;
 

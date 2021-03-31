@@ -34,9 +34,6 @@ class UserController {
             .where("uploaded_by = :userId", { userId: id })
             .getRawOne();
 
-        delete user.password;
-        delete user.tempPassword;
-
         res.status(200).json({
             data: {
                 ...user,
@@ -51,22 +48,7 @@ class UserController {
     public async getUserProfile(req: Request, res: Response) {
         const { username } = req.params;
 
-        const user = await getRepository(User).findOne(
-            { username: username },
-            {
-                select: [
-                    "id",
-                    "username",
-                    "firstName",
-                    "lastName",
-                    "female",
-                    "bannerPath",
-                    "avatarPath",
-                    "iconPath",
-                    "joinedAt",
-                ],
-            },
-        );
+        const user = await getRepository(User).findOne({ username: username });
 
         expect(user, "404:user not found").to.exist;
 
@@ -313,9 +295,6 @@ class UserController {
         }
 
         await userRepository.save(user);
-
-        delete user.password;
-        delete user.tempPassword;
 
         res.status(200).json({
             data: user,

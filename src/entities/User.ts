@@ -37,7 +37,7 @@ export class User {
     @Column("character varying", { name: "username", unique: true, length: 32 })
     username: string;
 
-    @Column("character varying", { name: "password", length: 72 })
+    @Column("character varying", { name: "password", length: 72, select: false })
     password: string;
 
     @Column("character varying", { name: "first_name", length: 32 })
@@ -136,7 +136,9 @@ export class User {
 
     @AfterLoad()
     rememberPassword() {
-        this.tempPassword = this.password;
+        if (this.password) {
+            this.tempPassword = this.password;
+        }
     }
 
     @BeforeInsert()
@@ -178,7 +180,8 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     async encryptPassword() {
-        if (this.password && this.tempPassword === this.password) return;
+        if (!this.password) return;
+        if (this.tempPassword === this.password) return;
 
         this.password = await bcrypt.hash(this.password, env.SALT_ROUND);
     }

@@ -11,7 +11,7 @@ import { Fields, Files } from "../interfaces/general";
 const tempPath = path.join(__dirname, "../../tmp");
 
 class MultipartMiddleware {
-    public storeUploadFiles(..._fields: string[]): RequestHandler {
+    public storeUploadFiles(...allowedFields: string[]): RequestHandler {
         return function storeUploadFiles(req: Request, res: Response, next: NextFunction) {
             const busboy = new Busboy({ headers: req.headers });
 
@@ -20,7 +20,7 @@ class MultipartMiddleware {
 
             busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
                 // prevent upload multiple files or not in allow files
-                if (files[fieldname] !== undefined || !_fields.includes(fieldname)) {
+                if (files[fieldname] !== undefined || !allowedFields.includes(fieldname)) {
                     file.resume();
                     return;
                 }
