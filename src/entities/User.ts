@@ -23,8 +23,9 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 
-export const defaultAvatarPath = "/photos/default-avatar.jpg";
-export const defaultIconPath = "/photos/default-icon.jpg";
+export const defaultBannerPath = "/photos/default-banner.png";
+export const defaultAvatarPath = "/photos/default-avatar.png";
+export const defaultIconPath = "/photos/default-icon.png";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -49,6 +50,13 @@ export class User {
     female: boolean;
 
     @Column("character varying", {
+        name: "banner_path",
+        default: defaultBannerPath,
+        length: 128,
+    })
+    bannerPath: string;
+
+    @Column("character varying", {
         name: "avatar_path",
         default: defaultAvatarPath,
         length: 128,
@@ -61,6 +69,9 @@ export class User {
         length: 128,
     })
     iconPath: string;
+
+    @Column("timestamp with time zone", { name: "joined_at", default: () => "CURRENT_TIMESTAMP" })
+    joinedAt: Date;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.user)
     commentLikes: CommentLike[];

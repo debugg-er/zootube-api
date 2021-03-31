@@ -12,7 +12,7 @@ import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/va
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
-import { defaultAvatarPath, defaultIconPath, User } from "../entities/User";
+import { defaultAvatarPath, defaultBannerPath, defaultIconPath, User } from "../entities/User";
 import { randomString } from "../utils/string_function";
 
 const tempPath = path.join(__dirname, "../../tmp");
@@ -60,8 +60,10 @@ class UserController {
                     "firstName",
                     "lastName",
                     "female",
+                    "bannerPath",
                     "avatarPath",
                     "iconPath",
+                    "joinedAt",
                 ],
             },
         );
@@ -216,11 +218,17 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.first_name", "body.last_name", "body.female", "files.avatar")
+    @mustExistOne(
+        "body.first_name",
+        "body.last_name",
+        "body.female",
+        "files.avatar",
+        "files.banner",
+    )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
         const { first_name, last_name, female } = req.body;
-        const { avatar } = req.files;
+        const { avatar, banner } = req.files;
 
         const userRepository = getRepository(User);
 
@@ -278,6 +286,30 @@ class UserController {
             user.iconPath = "/photos/" + iconName;
 
             await fs.promises.unlink(iconPath);
+        }
+
+        if (banner) {
+            expect(banner.mimetype, "400:invalid file").to.match(/image/);
+
+            user.validate();
+
+            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
+                formData: {
+                    file: {
+                        value: fs.createReadStream(banner.path),
+                        options: {
+                            filename: banner.name,
+                            contentType: banner.mimetype,
+                        },
+                    },
+                },
+            });
+
+            if (user.bannerPath !== defaultBannerPath) {
+                await request.delete(env.STATIC_SERVER_ENDPOINT + user.bannerPath);
+            }
+
+            user.bannerPath = "/photos/" + banner.name;
         }
 
         await userRepository.save(user);
