@@ -33,15 +33,13 @@ class VideoController {
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = await getVideoDuration(video.path);
         const thumbnailName = randomString(32) + ".png";
+        const thumbnailPath = path.join(tempPath, thumbnailName);
 
         await extractFrame(video.path, {
-            count: 1,
-            folder: tempPath,
-            filename: thumbnailName,
-            timestamps: [duration / 2],
+            dest: thumbnailPath,
+            seek: duration / 2,
+            height: 160,
         });
-
-        const thumbnailPath = path.join(tempPath, thumbnailName);
 
         await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
             formData: {
