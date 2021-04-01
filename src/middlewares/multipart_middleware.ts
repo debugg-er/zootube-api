@@ -4,7 +4,6 @@ import * as _ from "lodash";
 import * as Busboy from "busboy";
 import { Request, Response, NextFunction, RequestHandler } from "express";
 
-import asyncHander from "../decorators/async_handler";
 import { randomString } from "../utils/string_function";
 import { Fields, Files } from "../interfaces/general";
 
@@ -61,13 +60,6 @@ class MultipartMiddleware {
 
             req.pipe(busboy);
         };
-    }
-
-    @asyncHander
-    public async removeUploadedFiles(req: Request, res: Response, next: NextFunction) {
-        await Promise.all(_.values(req.files).map((file) => fs.promises.unlink(file.path)));
-
-        next();
     }
 }
 

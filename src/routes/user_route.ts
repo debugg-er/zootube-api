@@ -23,7 +23,6 @@ router.patch(
     authController.authorize,
     multipartMiddleware.storeUploadFiles("avatar", "banner"),
     userController.updateProfile,
-    multipartMiddleware.removeUploadedFiles,
 );
 
 export default router;

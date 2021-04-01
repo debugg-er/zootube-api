@@ -92,7 +92,7 @@ class VideoController {
             data: _video,
         });
 
-        await fs.promises.unlink(thumbnailPath);
+        req.local.tempFilePaths.push(thumbnailPath);
 
         next();
     }

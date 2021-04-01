@@ -267,7 +267,7 @@ class UserController {
             user.avatarPath = "/photos/" + avatar.name;
             user.iconPath = "/photos/" + iconName;
 
-            await fs.promises.unlink(iconPath);
+            req.local.tempFilePaths.push(iconPath);
         }
 
         if (banner) {

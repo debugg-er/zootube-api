@@ -9,6 +9,8 @@ import userRoute from "../routes/user_route";
 import subscriptionRoute from "../routes/subscription_route";
 import categoryRoute from "../routes/category_route";
 
+import cleanMiddleware from "../middlewares/clean_middleware";
+
 import * as errorHandler from "../utils/error_handler";
 
 const app: express.Application = express();
@@ -18,7 +20,7 @@ if (env.NODE_ENV === "development") {
 }
 
 app.use((req, res, next) => {
-    req.local = {};
+    req.local = { tempFilePaths: [] };
     next();
 });
 
@@ -29,6 +31,9 @@ app.use("/users", userRoute);
 app.use("/subscriptions", subscriptionRoute);
 app.use("/categories", categoryRoute);
 
+app.use(cleanMiddleware.removeTempFiles);
+
+app.use(errorHandler.removeTempFiles);
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);
 
