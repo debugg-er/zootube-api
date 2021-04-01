@@ -12,7 +12,12 @@ import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/va
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
-import { defaultAvatarPath, defaultIconPath, User } from "../entities/User";
+import {
+    DEFAULT_AVATAR_PATH,
+    DEFAULT_BANNER_PATH,
+    DEFAULT_ICON_PATH,
+    User,
+} from "../entities/User";
 import { randomString } from "../utils/string_function";
 
 const tempPath = path.join(__dirname, "../../tmp");
@@ -34,9 +39,6 @@ class UserController {
             .where("uploaded_by = :userId", { userId: id })
             .getRawOne();
 
-        delete user.password;
-        delete user.tempPassword;
-
         res.status(200).json({
             data: {
                 ...user,
@@ -51,20 +53,7 @@ class UserController {
     public async getUserProfile(req: Request, res: Response) {
         const { username } = req.params;
 
-        const user = await getRepository(User).findOne(
-            { username: username },
-            {
-                select: [
-                    "id",
-                    "username",
-                    "firstName",
-                    "lastName",
-                    "female",
-                    "avatarPath",
-                    "iconPath",
-                ],
-            },
-        );
+        const user = await getRepository(User).findOne({ username: username });
 
         expect(user, "404:user not found").to.exist;
 
@@ -216,11 +205,17 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.first_name", "body.last_name", "body.female", "files.avatar")
+    @mustExistOne(
+        "body.first_name",
+        "body.last_name",
+        "body.female",
+        "files.avatar",
+        "files.banner",
+    )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
         const { first_name, last_name, female } = req.body;
-        const { avatar } = req.files;
+        const { avatar, banner } = req.files;
 
         const userRepository = getRepository(User);
 
@@ -242,7 +237,7 @@ class UserController {
             const iconName = randomString(32) + ".jpg";
             const iconPath = path.join(tempPath, iconName);
 
-            await sharp(avatar.path).resize(200).jpeg().toFile(iconPath);
+            await sharp(avatar.path).resize(64, 64).jpeg().toFile(iconPath);
 
             await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
                 formData: {
@@ -267,23 +262,44 @@ class UserController {
                 },
             });
 
-            if (user.avatarPath !== defaultAvatarPath) {
+            if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
                 await request.delete(env.STATIC_SERVER_ENDPOINT + user.avatarPath);
             }
-            if (user.iconPath !== defaultIconPath) {
+            if (user.iconPath !== DEFAULT_ICON_PATH) {
                 await request.delete(env.STATIC_SERVER_ENDPOINT + user.iconPath);
             }
 
             user.avatarPath = "/photos/" + avatar.name;
             user.iconPath = "/photos/" + iconName;
 
-            await fs.promises.unlink(iconPath);
+            req.local.tempFilePaths.push(iconPath);
+        }
+
+        if (banner) {
+            expect(banner.mimetype, "400:invalid file").to.match(/image/);
+
+            user.validate();
+
+            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
+                formData: {
+                    file: {
+                        value: fs.createReadStream(banner.path),
+                        options: {
+                            filename: banner.name,
+                            contentType: banner.mimetype,
+                        },
+                    },
+                },
+            });
+
+            if (user.bannerPath !== DEFAULT_BANNER_PATH) {
+                await request.delete(env.STATIC_SERVER_ENDPOINT + user.bannerPath);
+            }
+
+            user.bannerPath = "/photos/" + banner.name;
         }
 
         await userRepository.save(user);
-
-        delete user.password;
-        delete user.tempPassword;
 
         res.status(200).json({
             data: user,

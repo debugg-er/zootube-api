@@ -21,9 +21,8 @@ router.get("/:username/profile", userController.getUserProfile);
 router.patch(
     "/",
     authController.authorize,
-    multipartMiddleware.storeUploadFiles("avatar"),
+    multipartMiddleware.storeUploadFiles("avatar", "banner"),
     userController.updateProfile,
-    multipartMiddleware.removeUploadedFiles,
 );
 
 export default router;

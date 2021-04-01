@@ -19,6 +19,8 @@ import { randomString } from "../utils/string_function";
 import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 
+export const THUMBNAIL_HEIGHT = 160;
+
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
 export class Video {

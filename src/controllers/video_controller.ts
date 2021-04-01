@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as request from "request-promise";
+import * as sharp from "sharp";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
@@ -11,7 +12,7 @@ import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
-import { Video } from "../entities/Video";
+import { Video, THUMBNAIL_HEIGHT } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
 import extractFrame from "../utils/extract_frame";
@@ -33,15 +34,13 @@ class VideoController {
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = await getVideoDuration(video.path);
         const thumbnailName = randomString(32) + ".png";
+        const thumbnailPath = path.join(tempPath, thumbnailName);
 
         await extractFrame(video.path, {
-            count: 1,
-            folder: tempPath,
-            filename: thumbnailName,
-            timestamps: [duration / 2],
+            dest: thumbnailPath,
+            seek: duration / 2,
+            height: THUMBNAIL_HEIGHT,
         });
-
-        const thumbnailPath = path.join(tempPath, thumbnailName);
 
         await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
             formData: {
@@ -94,7 +93,7 @@ class VideoController {
             data: _video,
         });
 
-        await fs.promises.unlink(thumbnailPath);
+        req.local.tempFilePaths.push(thumbnailPath);
 
         next();
     }
@@ -310,13 +309,26 @@ class VideoController {
 
         if (thumbnail) {
             expect(thumbnail.mimetype, "400:invalid thumbnail").to.match(/^image/);
+
+            video.validate();
+
+            const resizedThumbnailName = randomString(32) + ".jpg";
+            const resizedThumbnailPath = path.join(tempPath, resizedThumbnailName);
+
+            await sharp(thumbnail.path)
+                .resize({ height: THUMBNAIL_HEIGHT })
+                .jpeg()
+                .toFile(resizedThumbnailPath);
+
+            req.local.tempFilePaths.push(resizedThumbnailPath);
+
             await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
                 formData: {
                     file: {
-                        value: fs.createReadStream(thumbnail.path),
+                        value: fs.createReadStream(resizedThumbnailPath),
                         options: {
-                            filename: thumbnail.name,
-                            contentType: thumbnail.mimetype,
+                            filename: resizedThumbnailName,
+                            contentType: "image/jpeg",
                         },
                     },
                 },
@@ -324,7 +336,7 @@ class VideoController {
 
             await request.delete(env.STATIC_SERVER_ENDPOINT + video.thumbnailPath);
 
-            video.thumbnailPath = "/thumbnails/" + thumbnail.name;
+            video.thumbnailPath = "/thumbnails/" + resizedThumbnailName;
         }
 
         await getRepository(Video).save(video);

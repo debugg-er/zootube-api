@@ -4,14 +4,13 @@ import * as _ from "lodash";
 import * as Busboy from "busboy";
 import { Request, Response, NextFunction, RequestHandler } from "express";
 
-import asyncHander from "../decorators/async_handler";
 import { randomString } from "../utils/string_function";
 import { Fields, Files } from "../interfaces/general";
 
 const tempPath = path.join(__dirname, "../../tmp");
 
 class MultipartMiddleware {
-    public storeUploadFiles(..._fields: string[]): RequestHandler {
+    public storeUploadFiles(...allowedFields: string[]): RequestHandler {
         return function storeUploadFiles(req: Request, res: Response, next: NextFunction) {
             const busboy = new Busboy({ headers: req.headers });
 
@@ -20,7 +19,7 @@ class MultipartMiddleware {
 
             busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
                 // prevent upload multiple files or not in allow files
-                if (files[fieldname] !== undefined || !_fields.includes(fieldname)) {
+                if (files[fieldname] !== undefined || !allowedFields.includes(fieldname)) {
                     file.resume();
                     return;
                 }
@@ -61,13 +60,6 @@ class MultipartMiddleware {
 
             req.pipe(busboy);
         };
-    }
-
-    @asyncHander
-    public async removeUploadedFiles(req: Request, res: Response, next: NextFunction) {
-        await Promise.all(_.values(req.files).map((file) => fs.promises.unlink(file.path)));
-
-        next();
     }
 }
 

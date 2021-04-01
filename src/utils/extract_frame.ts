@@ -1,8 +1,19 @@
 import * as ffmpeg from "fluent-ffmpeg";
 
-export default function extractFrame(input: string, option: ffmpeg.ScreenshotsConfig) {
-    return new Promise((resolve, reject) => {
-        ffmpeg(input).on("end", resolve).on("err", reject).screenshot(option);
+interface ScreenshotConfig {
+    dest: string;
+    height: number;
+    seek: number;
+}
 
+export default function extractFrame(input: string, option: ScreenshotConfig) {
+    return new Promise((resolve, reject) => {
+        ffmpeg(input)
+            .setStartTime(option.seek)
+            .frames(1)
+            .withSize("?x" + option.height)
+            .on("end", resolve)
+            .on("err", reject)
+            .saveToFile(option.dest);
     });
 }

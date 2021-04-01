@@ -23,8 +23,9 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 
-export const defaultAvatarPath = "/photos/default-avatar.png";
-export const defaultIconPath = "/photos/default-icon.png";
+export const DEFAULT_BANNER_PATH = "/photos/default-banner.png";
+export const DEFAULT_AVATAR_PATH = "/photos/default-avatar.png";
+export const DEFAULT_ICON_PATH = "/photos/default-icon.png";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -36,7 +37,7 @@ export class User {
     @Column("character varying", { name: "username", unique: true, length: 32 })
     username: string;
 
-    @Column("character varying", { name: "password", length: 72 })
+    @Column("character varying", { name: "password", length: 72, select: false })
     password: string;
 
     @Column("character varying", { name: "first_name", length: 32 })
@@ -49,18 +50,28 @@ export class User {
     female: boolean;
 
     @Column("character varying", {
+        name: "banner_path",
+        default: DEFAULT_BANNER_PATH,
+        length: 128,
+    })
+    bannerPath: string;
+
+    @Column("character varying", {
         name: "avatar_path",
-        default: defaultAvatarPath,
+        default: DEFAULT_AVATAR_PATH,
         length: 128,
     })
     avatarPath: string;
 
     @Column("character varying", {
         name: "icon_path",
-        default: defaultIconPath,
+        default: DEFAULT_ICON_PATH,
         length: 128,
     })
     iconPath: string;
+
+    @Column("timestamp with time zone", { name: "joined_at", default: () => "CURRENT_TIMESTAMP" })
+    joinedAt: Date;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.user)
     commentLikes: CommentLike[];
@@ -125,7 +136,9 @@ export class User {
 
     @AfterLoad()
     rememberPassword() {
-        this.tempPassword = this.password;
+        if (this.password) {
+            this.tempPassword = this.password;
+        }
     }
 
     @BeforeInsert()
@@ -167,7 +180,8 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     async encryptPassword() {
-        if (this.password && this.tempPassword === this.password) return;
+        if (!this.password) return;
+        if (this.tempPassword === this.password) return;
 
         this.password = await bcrypt.hash(this.password, env.SALT_ROUND);
     }

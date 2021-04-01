@@ -47,7 +47,6 @@ router.post(
     authController.authorize,
     multipartMiddleware.storeUploadFiles("video"),
     videoController.uploadVideo,
-    multipartMiddleware.removeUploadedFiles,
 );
 
 router.patch(
@@ -56,7 +55,6 @@ router.patch(
     identifyMiddleware.isOwnVideo,
     multipartMiddleware.storeUploadFiles("thumbnail"),
     videoController.updateVideo,
-    multipartMiddleware.removeUploadedFiles,
 );
 
 router.delete(
