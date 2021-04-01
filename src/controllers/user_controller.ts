@@ -12,7 +12,12 @@ import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/va
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
-import { defaultAvatarPath, defaultBannerPath, defaultIconPath, User } from "../entities/User";
+import {
+    DEFAULT_AVATAR_PATH,
+    DEFAULT_BANNER_PATH,
+    DEFAULT_ICON_PATH,
+    User,
+} from "../entities/User";
 import { randomString } from "../utils/string_function";
 
 const tempPath = path.join(__dirname, "../../tmp");
@@ -257,10 +262,10 @@ class UserController {
                 },
             });
 
-            if (user.avatarPath !== defaultAvatarPath) {
+            if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
                 await request.delete(env.STATIC_SERVER_ENDPOINT + user.avatarPath);
             }
-            if (user.iconPath !== defaultIconPath) {
+            if (user.iconPath !== DEFAULT_ICON_PATH) {
                 await request.delete(env.STATIC_SERVER_ENDPOINT + user.iconPath);
             }
 
@@ -287,7 +292,7 @@ class UserController {
                 },
             });
 
-            if (user.bannerPath !== defaultBannerPath) {
+            if (user.bannerPath !== DEFAULT_BANNER_PATH) {
                 await request.delete(env.STATIC_SERVER_ENDPOINT + user.bannerPath);
             }
 
