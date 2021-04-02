@@ -42,6 +42,8 @@ class VideoController {
             height: THUMBNAIL_HEIGHT,
         });
 
+        req.local.tempFilePaths.push(thumbnailPath);
+
         await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
             formData: {
                 file: {
@@ -92,8 +94,6 @@ class VideoController {
         res.status(201).json({
             data: _video,
         });
-
-        req.local.tempFilePaths.push(thumbnailPath);
 
         next();
     }
