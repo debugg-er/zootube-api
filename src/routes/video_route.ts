@@ -18,8 +18,15 @@ router.use("/:video_id(\\w{10})/comments", commentRoute);
 
 router.get("/subscription", authController.authorize, videoController.getSubscriptionVideos);
 router.get("/watched", authController.authorize, videoController.getWatchedVideos);
+router.get("/liked", authController.authorize, videoController.getLikedVideos);
 
 router.get("/", videoController.getVideos);
+
+router.get(
+    "/:video_id(\\w{10})/relate",
+    findMiddleware .isVideoExist,
+    videoController.getRelateVideos,
+);
 
 router.get(
     "/:video_id(\\w{10})",
