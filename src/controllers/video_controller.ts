@@ -42,6 +42,8 @@ class VideoController {
             height: THUMBNAIL_HEIGHT,
         });
 
+        req.local.tempFilePaths.push(thumbnailPath);
+
         await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
             formData: {
                 file: {
@@ -92,8 +94,6 @@ class VideoController {
         res.status(201).json({
             data: _video,
         });
-
-        req.local.tempFilePaths.push(thumbnailPath);
 
         next();
     }
@@ -359,6 +359,75 @@ class VideoController {
 
         res.status(200).json({
             data: { message: "deleted video" },
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getLikedVideos(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const videos = await getRepository(Video)
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.videoLikes", "video_likes")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .where("video_likes.like = :isLiked", { isLiked: true })
+            .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: videos,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getRelateVideos(req: Request, res: Response) {
+        const { video_id } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const videoRepository = getRepository(Video);
+
+        const video = await videoRepository.findOne(video_id, {
+            select: ["id"],
+            relations: ["categories"],
+        });
+
+        let relateVideosQueryBuilder = videoRepository
+            .createQueryBuilder("videos")
+            .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.username", "users.iconPath"])
+            .where("videos.id <> :videoId", { videoId: video_id })
+            .skip(offset)
+            .take(limit)
+            .orderBy("videos.uploadedAt", "DESC");
+
+        if (video.categories.length === 0) {
+            relateVideosQueryBuilder = relateVideosQueryBuilder.andWhere("categories.id IS NULL");
+        } else {
+            relateVideosQueryBuilder = relateVideosQueryBuilder.andWhere(
+                "categories.id IN (:...categoryIds)",
+                {
+                    categoryIds: video.categories.map((category) => category.id),
+                },
+            );
+        }
+
+        const relateVideos = await relateVideosQueryBuilder.getMany();
+
+        res.status(200).json({
+            data: relateVideos,
         });
     }
 }

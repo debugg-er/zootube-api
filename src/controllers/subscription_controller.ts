@@ -42,7 +42,7 @@ class SubscriptioController {
             subscriberId: id,
         });
 
-        res.status(201).json({
+        res.status(200).json({
             data: { message: "unsubscribed" },
         });
     }
