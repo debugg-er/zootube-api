@@ -60,7 +60,8 @@ Get specific video.
 		},
 		"like": number,
 		"dislike": number,
-		"comment": number
+		"comment": number,
+		"isLiked": boolean | null
 	}
 }
 ```

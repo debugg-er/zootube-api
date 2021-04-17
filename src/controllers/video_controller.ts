@@ -119,8 +119,23 @@ class VideoController {
             .where({ id: video_id })
             .getOne();
 
+        let videoLike: VideoLike = null;
+
+        if (req.local.auth) {
+            videoLike = await getRepository(VideoLike).findOne({
+                select: ["like"],
+                where: {
+                    userId: req.local.auth.id,
+                    videoId: video_id,
+                },
+            });
+        }
+
         res.status(200).json({
-            data: video,
+            data: {
+                ...video,
+                isLiked: videoLike ? videoLike.like : null,
+            },
         });
 
         await videoRepository.update(video.id, { views: video.views + 1 });
