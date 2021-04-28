@@ -115,7 +115,7 @@ class VideoController {
             .loadRelationCountAndMap("videos.dislike", "videos.videoLikes", "a", (qb) =>
                 qb.andWhere("a.like = false"),
             )
-            .loadRelationCountAndMap("videos.comment", "videos.comments")
+            .loadRelationCountAndMap("videos.totalComments", "videos.comments")
             .where({ id: video_id })
             .getOne();
 
@@ -268,37 +268,6 @@ class VideoController {
             .skip(offset)
             .take(limit)
             .getMany();
-
-        res.status(200).json({
-            data: videos,
-        });
-    }
-
-    @asyncHandler
-    @isNumberIfExist("query.offset", "query.limit")
-    @mustInRangeIfExist("query.offset", 0, Infinity)
-    @mustInRangeIfExist("query.limit", 0, 100)
-    public async getWatchedVideos(req: Request, res: Response) {
-        const { id } = req.local.auth;
-        const offset = +req.query.offset || 0;
-        const limit = +req.query.limit || 30;
-
-        const watchedHistories = await getRepository(WatchedVideo)
-            .createQueryBuilder("watchedVideos")
-            .leftJoinAndSelect("watchedVideos.video", "videos")
-            .leftJoinAndSelect("videos.categories", "categories")
-            .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
-            .where({ userId: id })
-            .orderBy("watchedVideos.watchedAt", "DESC")
-            .skip(offset)
-            .take(limit)
-            .getMany();
-
-        const videos = watchedHistories.map((watchedVideo) => ({
-            ...watchedVideo.video,
-            watchedAt: watchedVideo.watchedAt,
-        }));
 
         res.status(200).json({
             data: videos,
