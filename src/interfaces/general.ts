@@ -1,10 +1,12 @@
+export interface File {
+    path: string;
+    name: string;
+    mimetype: string;
+    type: string;
+}
+
 export interface Files {
-    [field: string]: {
-        path: string;
-        name: string;
-        mimetype: string;
-        type: string;
-    };
+    [field: string]: File;
 }
 
 export interface Fields {

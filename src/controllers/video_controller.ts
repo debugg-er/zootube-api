@@ -1,12 +1,10 @@
-import * as fs from "fs";
 import * as path from "path";
-import * as request from "request-promise";
 import * as sharp from "sharp";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
 
-import env from "../providers/env";
+import staticService from "../services/static_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
@@ -18,6 +16,7 @@ import { WatchedVideo } from "../entities/WatchedVideo";
 import extractFrame from "../utils/extract_frame";
 import getVideoDuration from "../utils/get_video_duration";
 import { randomString } from "../utils/string_function";
+import extractFilenameFromPath from "../utils/extract_filename_from_path";
 
 const tempPath = path.join(__dirname, "../../tmp");
 
@@ -44,28 +43,13 @@ class VideoController {
 
         req.local.tempFilePaths.push(thumbnailPath);
 
-        await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
-            formData: {
-                file: {
-                    value: fs.createReadStream(video.path),
-                    options: {
-                        filename: video.name,
-                        contentType: video.mimetype,
-                    },
-                },
-            },
-        });
+        await staticService.postVideo(video);
 
-        await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
-            formData: {
-                file: {
-                    value: fs.createReadStream(thumbnailPath),
-                    options: {
-                        filename: thumbnailName,
-                        contentType: "image/png",
-                    },
-                },
-            },
+        await staticService.postThumbnail({
+            mimetype: "image/png",
+            path: thumbnailPath,
+            name: thumbnailName,
+            type: "png",
         });
 
         const videoRepository = getRepository(Video);
@@ -306,19 +290,14 @@ class VideoController {
 
             req.local.tempFilePaths.push(resizedThumbnailPath);
 
-            await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
-                formData: {
-                    file: {
-                        value: fs.createReadStream(resizedThumbnailPath),
-                        options: {
-                            filename: resizedThumbnailName,
-                            contentType: "image/jpeg",
-                        },
-                    },
-                },
+            await staticService.postThumbnail({
+                mimetype: "image/jpeg",
+                name: resizedThumbnailName,
+                path: resizedThumbnailPath,
+                type: "jpg",
             });
 
-            await request.delete(env.STATIC_SERVER_ENDPOINT + video.thumbnailPath);
+            await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
             video.thumbnailPath = "/thumbnails/" + resizedThumbnailName;
         }
@@ -336,8 +315,8 @@ class VideoController {
     public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
-        await request.delete(env.STATIC_SERVER_ENDPOINT + video.videoPath);
-        await request.delete(env.STATIC_SERVER_ENDPOINT + video.thumbnailPath);
+        await staticService.deleteVideo(extractFilenameFromPath(video.videoPath));
+        await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
         await getRepository(Video).delete(video);
 
