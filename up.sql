@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     female BOOLEAN NOT NULL,
     banner_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-banner.png',
     avatar_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-avatar.png',
-    icon_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-icon.png'
-    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    icon_path VARCHAR(128) NOT NULL DEFAULT '/photos/default-icon.png',
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS categories (
