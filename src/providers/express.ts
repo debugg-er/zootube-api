@@ -8,6 +8,7 @@ import videoRoute from "../routes/video_route";
 import userRoute from "../routes/user_route";
 import subscriptionRoute from "../routes/subscription_route";
 import categoryRoute from "../routes/category_route";
+import historyRoute from "../routes/history_route";
 
 import cleanMiddleware from "../middlewares/clean_middleware";
 
@@ -30,6 +31,7 @@ app.use("/videos", videoRoute);
 app.use("/users", userRoute);
 app.use("/subscriptions", subscriptionRoute);
 app.use("/categories", categoryRoute);
+app.use("/histories", historyRoute);
 
 app.use(cleanMiddleware.removeTempFiles);
 

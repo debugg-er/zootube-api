@@ -1,12 +1,10 @@
-import * as fs from "fs";
 import * as path from "path";
-import * as request from "request-promise";
 import * as sharp from "sharp";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
 
-import env from "../providers/env";
+import staticService from "../services/static_service";
 import asyncHandler from "../decorators/async_handler";
 import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
@@ -19,6 +17,7 @@ import {
     User,
 } from "../entities/User";
 import { randomString } from "../utils/string_function";
+import extractFilenameFromPath from "../utils/extract_filename_from_path";
 
 const tempPath = path.join(__dirname, "../../tmp");
 
@@ -239,34 +238,20 @@ class UserController {
 
             await sharp(avatar.path).resize(64, 64).jpeg().toFile(iconPath);
 
-            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
-                formData: {
-                    file: {
-                        value: fs.createReadStream(avatar.path),
-                        options: {
-                            filename: avatar.name,
-                            contentType: avatar.mimetype,
-                        },
-                    },
-                },
-            });
-            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
-                formData: {
-                    file: {
-                        value: fs.createReadStream(iconPath),
-                        options: {
-                            filename: iconName,
-                            contentType: "image/jpeg",
-                        },
-                    },
-                },
+            await staticService.postPhoto(avatar);
+
+            await staticService.postPhoto({
+                mimetype: "image/jpeg",
+                type: "jpg",
+                path: iconPath,
+                name: iconName,
             });
 
             if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
-                await request.delete(env.STATIC_SERVER_ENDPOINT + user.avatarPath);
+                await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
             }
             if (user.iconPath !== DEFAULT_ICON_PATH) {
-                await request.delete(env.STATIC_SERVER_ENDPOINT + user.iconPath);
+                await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
             user.avatarPath = "/photos/" + avatar.name;
@@ -280,20 +265,10 @@ class UserController {
 
             user.validate();
 
-            await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
-                formData: {
-                    file: {
-                        value: fs.createReadStream(banner.path),
-                        options: {
-                            filename: banner.name,
-                            contentType: banner.mimetype,
-                        },
-                    },
-                },
-            });
+            await staticService.postPhoto(banner);
 
             if (user.bannerPath !== DEFAULT_BANNER_PATH) {
-                await request.delete(env.STATIC_SERVER_ENDPOINT + user.bannerPath);
+                await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 
             user.bannerPath = "/photos/" + banner.name;
