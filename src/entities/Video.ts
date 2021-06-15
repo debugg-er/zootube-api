@@ -18,6 +18,7 @@ import { WatchedVideo } from "./WatchedVideo";
 import { randomString } from "../utils/string_function";
 import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
+import VirtualColumn from "../decorators/VirtualColumn";
 
 export const THUMBNAIL_HEIGHT = 160;
 
@@ -67,6 +68,19 @@ export class Video {
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.video)
     watchedVideos: WatchedVideo[];
+
+    // --- virtual columns
+    @VirtualColumn("integer")
+    like: number | null;
+
+    @VirtualColumn("integer")
+    dislike: number | null;
+
+    @VirtualColumn("integer")
+    totalComments: number | null;
+
+    @VirtualColumn("boolean")
+    react: boolean | null;
 
     // --- additional methods
     static async generateId(): Promise<string> {

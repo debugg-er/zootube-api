@@ -100,26 +100,22 @@ class VideoController {
                 qb.andWhere("a.like = false"),
             )
             .loadRelationCountAndMap("videos.totalComments", "videos.comments")
+            .addSelect(
+                (qb) =>
+                    qb
+                        .select("vl.like", "react")
+                        .from(VideoLike, "vl")
+                        .where("vl.video_id = :videoId AND users.id = :userId", {
+                            videoId: video_id,
+                            userId: req.local.auth?.id,
+                        }),
+                "videos_react",
+            )
             .where({ id: video_id })
             .getOne();
 
-        let videoLike: VideoLike = null;
-
-        if (req.local.auth) {
-            videoLike = await getRepository(VideoLike).findOne({
-                select: ["like"],
-                where: {
-                    userId: req.local.auth.id,
-                    videoId: video_id,
-                },
-            });
-        }
-
         res.status(200).json({
-            data: {
-                ...video,
-                isLiked: videoLike ? videoLike.like : null,
-            },
+            data: video,
         });
 
         await videoRepository.update(video.id, { views: video.views + 1 });

@@ -11,10 +11,16 @@ const router = express.Router({ mergeParams: true });
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.get("/", findMiddleware.isVideoExist, commentController.getVideoComments);
+router.get(
+    "/",
+    authController.authorizeIfGiven,
+    findMiddleware.isVideoExist,
+    commentController.getVideoComments,
+);
 
 router.get(
     "/:comment_id(\\d+)",
+    authController.authorizeIfGiven,
     findMiddleware.isCommentExistInVideo,
     commentController.getCommentReplies,
 );

@@ -7,6 +7,7 @@ import {
     OneToMany,
     PrimaryGeneratedColumn,
 } from "typeorm";
+import VirtualColumn from "../decorators/VirtualColumn";
 import { CommentLike } from "./CommentLike";
 import { User } from "./User";
 import { Video } from "./Video";
@@ -42,4 +43,17 @@ export class Comment {
     @ManyToOne(() => Video, (videos) => videos.comments, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
+
+    // --- virtual columns
+    @VirtualColumn("integer")
+    like: number | null;
+
+    @VirtualColumn("integer")
+    dislike: number | null;
+
+    @VirtualColumn("integer")
+    totalReplies: number | null;
+
+    @VirtualColumn("boolean")
+    react: boolean | null;
 }

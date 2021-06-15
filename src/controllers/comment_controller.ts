@@ -81,6 +81,16 @@ class CommentController {
             .loadRelationCountAndMap("comments.dislike", "comments.commentLikes", "b", (qb) =>
                 qb.andWhere("b.like = false"),
             )
+            .addSelect(
+                (qb) =>
+                    qb
+                        .select("cl.like", "react")
+                        .from(CommentLike, "cl")
+                        .where("cl.comment_id = comments.id AND cl.user_id = :userId", {
+                            userId: req.local.auth?.id,
+                        }),
+                "comments_react",
+            )
             .where("comments.video_id = :videoId", { videoId: video_id })
             .andWhere("comments.parent_id IS NULL")
             .orderBy("comments.createdAt", "DESC")
@@ -111,6 +121,16 @@ class CommentController {
             )
             .loadRelationCountAndMap("comments.dislike", "comments.commentLikes", "b", (qb) =>
                 qb.andWhere("b.like = false"),
+            )
+            .addSelect(
+                (qb) =>
+                    qb
+                        .select("cl.like", "react")
+                        .from(CommentLike, "cl")
+                        .where("cl.comment_id = comments.id AND cl.user_id = :userId", {
+                            userId: req.local.auth?.id,
+                        }),
+                "comments_react",
             )
             .where("comments.parent_id = :parentId", { parentId: comment_id })
             .orderBy("comments.createdAt", "DESC")
