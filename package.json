@@ -43,7 +43,10 @@
         "build": "tsc",
         "migration:create": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:create -f ./src/ormconfig.ts -n",
         "migration:run": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -f ./src/ormconfig.ts",
-        "migration:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts"
+        "migration:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts",
+        "seed:create": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:create -f ./src/ormconfig.ts -c seed -n",
+        "seed:run": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -f ./src/ormconfig.ts -c seed",
+        "seed:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts -c seed"
     },
     "author": "backy4rd",
     "license": "ISC"
