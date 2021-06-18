@@ -105,7 +105,7 @@ class VideoController {
                     qb
                         .select("vl.like", "react")
                         .from(VideoLike, "vl")
-                        .where("vl.video_id = :videoId AND users.id = :userId", {
+                        .where("vl.video_id = :videoId AND vl.user_id = :userId", {
                             videoId: video_id,
                             userId: req.local.auth?.id,
                         }),
@@ -113,6 +113,11 @@ class VideoController {
             )
             .where({ id: video_id })
             .getOne();
+
+        console.log({
+            videoId: video_id,
+            userId: req.local.auth?.id,
+        });
 
         res.status(200).json({
             data: video,
