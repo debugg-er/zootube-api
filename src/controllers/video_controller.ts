@@ -319,7 +319,7 @@ class VideoController {
         await staticService.deleteVideo(extractFilenameFromPath(video.videoPath));
         await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
-        await getRepository(Video).delete(video);
+        await getRepository(Video).delete({ id: video.id });
 
         res.status(200).json({
             data: { message: "deleted video" },
