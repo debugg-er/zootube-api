@@ -9,7 +9,7 @@ router.get("/", async (req, res, next) => {
         const categories = await getRepository(Category).find();
 
         res.status(200).json({
-            data: categories.map((c) => c.category),
+            data: categories,
         });
 
         //

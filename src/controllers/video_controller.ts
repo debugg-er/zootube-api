@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as sharp from "sharp";
+import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
@@ -28,7 +29,8 @@ class VideoController {
         const { title, description, categories } = req.body;
         const { video } = req.files;
 
-        expect(video.mimetype, "400:invalid video").to.match(/^video/);
+        const videoType = await FileType.fromFile(video.path);
+        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "mkv", "flv"]);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = await getVideoDuration(video.path);
@@ -113,11 +115,6 @@ class VideoController {
             )
             .where({ id: video_id })
             .getOne();
-
-        console.log({
-            videoId: video_id,
-            userId: req.local.auth?.id,
-        });
 
         res.status(200).json({
             data: video,
@@ -277,7 +274,8 @@ class VideoController {
         }
 
         if (thumbnail) {
-            expect(thumbnail.mimetype, "400:invalid thumbnail").to.match(/^image/);
+            const thumbnailType = await FileType.fromFile(thumbnail.path);
+            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
 
             video.validate();
 

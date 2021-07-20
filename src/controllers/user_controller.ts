@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as sharp from "sharp";
+import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
@@ -228,7 +229,8 @@ class UserController {
         }
 
         if (avatar) {
-            expect(avatar.mimetype, "400:invalid file").to.match(/image/);
+            const avatarType = await FileType.fromFile(avatar.path);
+            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
 
             // stop handle when user contain invalid property
             user.validate();
