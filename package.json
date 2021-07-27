@@ -12,6 +12,7 @@
         "chai": "^4.2.0",
         "dotenv": "^8.2.0",
         "express": "^4.17.1",
+        "file-type": "^16.5.0",
         "fluent-ffmpeg": "^2.1.2",
         "jsonwebtoken": "^8.5.1",
         "lodash": "^4.17.21",
@@ -34,15 +35,19 @@
         "@types/request-promise": "^4.1.47",
         "@types/sharp": "^0.27.1",
         "ts-node": "^9.1.1",
-        "ts-node-dev": "^1.1.1",
+        "ts-node-dev": "^1.1.8",
         "typescript": "^4.0.3"
     },
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
         "start": "node ./build/index.js",
         "build": "tsc",
-        "migrate:up": "ts-node ./src/migrations/up.ts",
-        "migrate:down": "ts-node ./src/migrations/down.ts"
+        "migration:create": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:create -f ./src/ormconfig.ts -n",
+        "migration:run": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -f ./src/ormconfig.ts",
+        "migration:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts",
+        "seed:create": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:create -f ./src/ormconfig.ts -c seed -n",
+        "seed:run": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -f ./src/ormconfig.ts -c seed",
+        "seed:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts -c seed"
     },
     "author": "backy4rd",
     "license": "ISC"
