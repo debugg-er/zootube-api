@@ -1,14 +1,16 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
 const data = [
-    "Trò Chơi",
-    "Âm Nhạc",
-    "Nghệ Thuật",
-    "Hướng Dẫn",
-    "Phim Ảnh",
-    "Điện Tử",
-    "Kĩ Thuật",
-    "Phim Ngắn",
+    "Trò chơi",
+    "Hài hước",
+    "Phim ảnh",
+    "Du lịch",
+    "Thức ăn",
+    "Thể thao",
+    "Công nghệ",
+    "Âm nhạc",
+    "Hoạt hình",
+    "Tự nhiên",
 ];
 
 export class categories1623917020011 implements MigrationInterface {
