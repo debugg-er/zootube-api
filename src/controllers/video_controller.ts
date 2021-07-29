@@ -19,7 +19,9 @@ class VideoController {
     @asyncHandler
     @mustExist("body.title", "files.video")
     @mustMatchIfExist("body.categories", listRegex)
+    @isNumberIfExist("body.thumbnail_timestamp")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
+        const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
         const { title, description, categories } = req.body;
         const { video } = req.files;
 
@@ -29,10 +31,24 @@ class VideoController {
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = ~~(await getVideoDuration(video.path));
 
-        const { videoPath, thumbnailPath } = await staticService.processVideo(video, duration / 2);
+        if (thumbnail_timestamp) {
+            expect(
+                thumbnail_timestamp,
+                "400:thumbnail_timestamp out of video duration",
+            ).to.lessThan(duration);
+        }
+        res.status(200).json({
+            data: {
+                message: "upload video success, waiting to process",
+            },
+        });
+
+        const { videoPath, thumbnailPath } = await staticService.processVideo(
+            video,
+            thumbnail_timestamp || duration / 2,
+        );
 
         const videoRepository = getRepository(Video);
-
         const _video = videoRepository.create({
             id: await Video.generateId(),
             title: title,
@@ -53,11 +69,6 @@ class VideoController {
 
         // use .save to also insert category entities
         await videoRepository.save(_video);
-
-        res.status(201).json({
-            data: _video,
-        });
-
         next();
     }
 
