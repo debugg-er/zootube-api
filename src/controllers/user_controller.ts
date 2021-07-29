@@ -1,5 +1,3 @@
-import * as path from "path";
-import * as sharp from "sharp";
 import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
@@ -17,10 +15,7 @@ import {
     DEFAULT_ICON_PATH,
     User,
 } from "../entities/User";
-import { randomString } from "../utils/string_function";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
-
-const tempPath = path.join(__dirname, "../../tmp");
 
 class UserController {
     @asyncHandler
@@ -235,19 +230,7 @@ class UserController {
             // stop handle when user contain invalid property
             user.validate();
 
-            const iconName = randomString(32) + ".jpg";
-            const iconPath = path.join(tempPath, iconName);
-
-            await sharp(avatar.path).resize(64, 64).jpeg().toFile(iconPath);
-
-            await staticService.postPhoto(avatar);
-
-            await staticService.postPhoto({
-                mimetype: "image/jpeg",
-                type: "jpg",
-                path: iconPath,
-                name: iconName,
-            });
+            const { avatarPath, iconPath } = await staticService.processAvatar(avatar);
 
             if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
@@ -256,24 +239,20 @@ class UserController {
                 await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
-            user.avatarPath = "/photos/" + avatar.name;
-            user.iconPath = "/photos/" + iconName;
-
-            req.local.tempFilePaths.push(iconPath);
+            user.avatarPath = avatarPath;
+            user.iconPath = iconPath;
         }
 
         if (banner) {
             expect(banner.mimetype, "400:invalid file").to.match(/image/);
-
             user.validate();
 
-            await staticService.postPhoto(banner);
-
+            const { bannerPath } = await staticService.processBanner(banner);
             if (user.bannerPath !== DEFAULT_BANNER_PATH) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 
-            user.bannerPath = "/photos/" + banner.name;
+            user.bannerPath = bannerPath;
         }
 
         await userRepository.save(user);

@@ -1,6 +1,5 @@
-import * as path from "path";
-import * as sharp from "sharp";
 import * as FileType from "file-type";
+import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
@@ -11,15 +10,10 @@ import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
-import { Video, THUMBNAIL_HEIGHT } from "../entities/Video";
+import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
-import extractFrame from "../utils/extract_frame";
-import getVideoDuration from "../utils/get_video_duration";
-import { randomString } from "../utils/string_function";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
-
-const tempPath = path.join(__dirname, "../../tmp");
 
 class VideoController {
     @asyncHandler
@@ -33,26 +27,9 @@ class VideoController {
         expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "mkv", "flv"]);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
-        const duration = await getVideoDuration(video.path);
-        const thumbnailName = randomString(32) + ".png";
-        const thumbnailPath = path.join(tempPath, thumbnailName);
+        const duration = ~~(await getVideoDuration(video.path));
 
-        await extractFrame(video.path, {
-            dest: thumbnailPath,
-            seek: duration / 2,
-            height: THUMBNAIL_HEIGHT,
-        });
-
-        req.local.tempFilePaths.push(thumbnailPath);
-
-        await staticService.postVideo(video);
-
-        await staticService.postThumbnail({
-            mimetype: "image/png",
-            path: thumbnailPath,
-            name: thumbnailName,
-            type: "png",
-        });
+        const { videoPath, thumbnailPath } = await staticService.processVideo(video, duration / 2);
 
         const videoRepository = getRepository(Video);
 
@@ -60,8 +37,8 @@ class VideoController {
             id: await Video.generateId(),
             title: title,
             duration: duration,
-            videoPath: "/videos/" + video.name,
-            thumbnailPath: "/thumbnails/" + thumbnailName,
+            videoPath: videoPath,
+            thumbnailPath: thumbnailPath,
             description: description,
             views: 0,
             uploadedAt: uploadedAt,
@@ -279,26 +256,10 @@ class VideoController {
 
             video.validate();
 
-            const resizedThumbnailName = randomString(32) + ".jpg";
-            const resizedThumbnailPath = path.join(tempPath, resizedThumbnailName);
-
-            await sharp(thumbnail.path)
-                .resize({ height: THUMBNAIL_HEIGHT })
-                .jpeg()
-                .toFile(resizedThumbnailPath);
-
-            req.local.tempFilePaths.push(resizedThumbnailPath);
-
-            await staticService.postThumbnail({
-                mimetype: "image/jpeg",
-                name: resizedThumbnailName,
-                path: resizedThumbnailPath,
-                type: "jpg",
-            });
-
+            const { thumbnailPath } = await staticService.processThumbnail(thumbnail);
             await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
-            video.thumbnailPath = "/thumbnails/" + resizedThumbnailName;
+            video.thumbnailPath = thumbnailPath;
         }
 
         await getRepository(Video).save(video);
