@@ -23,10 +23,6 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 
-export const DEFAULT_BANNER_PATH = "/photos/default-banner.png";
-export const DEFAULT_AVATAR_PATH = "/photos/default-avatar.png";
-export const DEFAULT_ICON_PATH = "/photos/default-icon.png";
-
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
 @Entity("users", { schema: "public" })
@@ -49,26 +45,14 @@ export class User {
     @Column("boolean", { name: "female" })
     female: boolean;
 
-    @Column("character varying", {
-        name: "banner_path",
-        default: DEFAULT_BANNER_PATH,
-        length: 128,
-    })
-    bannerPath: string;
+    @Column("character varying", { name: "banner_path", length: 128 })
+    bannerPath: string | null;
 
-    @Column("character varying", {
-        name: "avatar_path",
-        default: DEFAULT_AVATAR_PATH,
-        length: 128,
-    })
-    avatarPath: string;
+    @Column("character varying", { name: "avatar_path", length: 128 })
+    avatarPath: string | null;
 
-    @Column("character varying", {
-        name: "icon_path",
-        default: DEFAULT_ICON_PATH,
-        length: 128,
-    })
-    iconPath: string;
+    @Column("character varying", { name: "icon_path", length: 128 })
+    iconPath: string | null;
 
     @Column("timestamp with time zone", { name: "joined_at", default: () => "CURRENT_TIMESTAMP" })
     joinedAt: Date;
@@ -104,9 +88,6 @@ export class User {
             const payload: IUserToken = {
                 id: this.id,
                 username: this.username,
-                firstName: this.firstName,
-                lastName: this.lastName,
-                iconPath: this.iconPath,
             };
 
             const option: jwt.SignOptions = {

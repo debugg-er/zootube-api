@@ -13,30 +13,28 @@
         "dotenv": "^8.2.0",
         "express": "^4.17.1",
         "file-type": "^16.5.0",
-        "fluent-ffmpeg": "^2.1.2",
+        "get-video-duration": "^3.1.0",
         "jsonwebtoken": "^8.5.1",
         "lodash": "^4.17.21",
         "morgan": "^1.10.0",
         "pg": "^8.5.1",
         "request": "^2.88.2",
         "request-promise": "^4.2.6",
-        "sharp": "^0.27.2",
         "typeorm": "^0.2.31"
     },
     "devDependencies": {
         "@types/bcrypt": "^3.0.0",
         "@types/busboy": "^0.2.3",
-        "@types/chai": "^4.2.14",
+        "@types/chai": "^4.2.21",
         "@types/express": "^4.17.8",
-        "@types/fluent-ffmpeg": "^2.1.16",
         "@types/jsonwebtoken": "^8.5.0",
         "@types/lodash": "^4.14.168",
         "@types/morgan": "^1.9.2",
         "@types/request-promise": "^4.1.47",
-        "@types/sharp": "^0.27.1",
+        "patch-package": "^6.4.7",
         "ts-node": "^9.1.1",
         "ts-node-dev": "^1.1.8",
-        "typescript": "^4.0.3"
+        "typescript": "^4.3.5"
     },
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -47,7 +45,8 @@
         "migration:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts",
         "seed:create": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:create -f ./src/ormconfig.ts -c seed -n",
         "seed:run": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:run -f ./src/ormconfig.ts -c seed",
-        "seed:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts -c seed"
+        "seed:revert": "ts-node --transpile-only ./node_modules/typeorm/cli.js migration:revert -f ./src/ormconfig.ts -c seed",
+        "postinstall": "patch-package"
     },
     "author": "backy4rd",
     "license": "ISC"

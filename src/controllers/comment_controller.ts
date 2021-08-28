@@ -73,7 +73,7 @@ class CommentController {
         const comments = await getRepository(Comment)
             .createQueryBuilder("comments")
             .leftJoin("comments.user", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .loadRelationCountAndMap("comments.totalReplies", "comments.comments")
             .loadRelationCountAndMap("comments.like", "comments.commentLikes", "a", (qb) =>
                 qb.andWhere("a.like = true"),
@@ -115,7 +115,7 @@ class CommentController {
         const comments = await getRepository(Comment)
             .createQueryBuilder("comments")
             .leftJoin("comments.user", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .loadRelationCountAndMap("comments.like", "comments.commentLikes", "a", (qb) =>
                 qb.andWhere("a.like = true"),
             )

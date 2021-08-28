@@ -27,7 +27,7 @@ class SearchController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("LOWER(title) LIKE :q", { q: `%${q.toLowerCase()}%` })
             .skip(offset)
             .take(limit);

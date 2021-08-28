@@ -1,6 +1,5 @@
-import * as path from "path";
-import * as sharp from "sharp";
 import * as FileType from "file-type";
+import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
@@ -11,21 +10,18 @@ import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
-import { Video, THUMBNAIL_HEIGHT } from "../entities/Video";
+import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
-import extractFrame from "../utils/extract_frame";
-import getVideoDuration from "../utils/get_video_duration";
-import { randomString } from "../utils/string_function";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
-
-const tempPath = path.join(__dirname, "../../tmp");
 
 class VideoController {
     @asyncHandler
     @mustExist("body.title", "files.video")
     @mustMatchIfExist("body.categories", listRegex)
+    @isNumberIfExist("body.thumbnail_timestamp")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
+        const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
         const { title, description, categories } = req.body;
         const { video } = req.files;
 
@@ -33,35 +29,32 @@ class VideoController {
         expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "mkv", "flv"]);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
-        const duration = await getVideoDuration(video.path);
-        const thumbnailName = randomString(32) + ".png";
-        const thumbnailPath = path.join(tempPath, thumbnailName);
+        const duration = ~~(await getVideoDuration(video.path));
 
-        await extractFrame(video.path, {
-            dest: thumbnailPath,
-            seek: duration / 2,
-            height: THUMBNAIL_HEIGHT,
+        if (thumbnail_timestamp) {
+            expect(
+                thumbnail_timestamp,
+                "400:thumbnail_timestamp out of video duration",
+            ).to.lessThan(duration);
+        }
+        res.status(200).json({
+            data: {
+                message: "upload video success, waiting to process",
+            },
         });
 
-        req.local.tempFilePaths.push(thumbnailPath);
-
-        await staticService.postVideo(video);
-
-        await staticService.postThumbnail({
-            mimetype: "image/png",
-            path: thumbnailPath,
-            name: thumbnailName,
-            type: "png",
-        });
+        const { videoPath, thumbnailPath } = await staticService.processVideo(
+            video,
+            thumbnail_timestamp || duration / 2,
+        );
 
         const videoRepository = getRepository(Video);
-
         const _video = videoRepository.create({
             id: await Video.generateId(),
             title: title,
             duration: duration,
-            videoPath: "/videos/" + video.name,
-            thumbnailPath: "/thumbnails/" + thumbnailName,
+            videoPath: videoPath,
+            thumbnailPath: thumbnailPath,
             description: description,
             views: 0,
             uploadedAt: uploadedAt,
@@ -76,11 +69,6 @@ class VideoController {
 
         // use .save to also insert category entities
         await videoRepository.save(_video);
-
-        res.status(201).json({
-            data: _video,
-        });
-
         next();
     }
 
@@ -94,7 +82,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .loadRelationCountAndMap("videos.like", "videos.videoLikes", "a", (qb) =>
                 qb.andWhere("a.like = true"),
             )
@@ -165,7 +153,7 @@ class VideoController {
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .leftJoinAndSelect("videos.categories", "categories")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
@@ -235,7 +223,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .innerJoin(
                 (subquery) => {
                     return subquery
@@ -264,6 +252,11 @@ class VideoController {
         const { thumbnail } = req.files;
         const { video } = req.local;
 
+        if (thumbnail) {
+            const thumbnailType = await FileType.fromFile(thumbnail.path);
+            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
+        }
+
         video.title = title || video.title;
         video.description = description || video.description;
 
@@ -273,32 +266,12 @@ class VideoController {
             });
         }
 
+        video.validate();
         if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
-
-            video.validate();
-
-            const resizedThumbnailName = randomString(32) + ".jpg";
-            const resizedThumbnailPath = path.join(tempPath, resizedThumbnailName);
-
-            await sharp(thumbnail.path)
-                .resize({ height: THUMBNAIL_HEIGHT })
-                .jpeg()
-                .toFile(resizedThumbnailPath);
-
-            req.local.tempFilePaths.push(resizedThumbnailPath);
-
-            await staticService.postThumbnail({
-                mimetype: "image/jpeg",
-                name: resizedThumbnailName,
-                path: resizedThumbnailPath,
-                type: "jpg",
-            });
-
+            const { thumbnailPath } = await staticService.processThumbnail(thumbnail);
             await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
-            video.thumbnailPath = "/thumbnails/" + resizedThumbnailName;
+            video.thumbnailPath = thumbnailPath;
         }
 
         await getRepository(Video).save(video);
@@ -337,7 +310,7 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.videoLikes", "video_likes")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("video_likes.like = :isLiked", { isLiked: true })
             .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
             .skip(offset)
@@ -369,7 +342,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.id <> :videoId", { videoId: video_id })
             .skip(offset)
             .take(limit)

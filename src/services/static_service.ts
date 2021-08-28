@@ -4,47 +4,95 @@ import * as request from "request-promise";
 import env from "../providers/env";
 import { File } from "../interfaces/general";
 
+export class StaticServiceError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
 class StaticService {
-    public async postVideo(video: File): Promise<void> {
-        await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
-            formData: {
-                file: {
-                    value: fs.createReadStream(video.path),
-                    options: {
-                        filename: video.name,
-                        contentType: video.mimetype,
+    public async processVideo(
+        video: File,
+        thumbnailTimestamp: number,
+    ): Promise<{ videoPath: string; thumbnailPath: string }> {
+        try {
+            const { data } = await request.post(env.STATIC_SERVER_ENDPOINT + "/videos", {
+                json: true,
+                formData: {
+                    seek: ~~thumbnailTimestamp,
+                    video: {
+                        value: fs.createReadStream(video.path),
+                        options: {
+                            filename: video.name,
+                            contentType: video.mimetype,
+                        },
                     },
                 },
-            },
-        });
+            });
+            return data;
+        } catch (err) {
+            throw new StaticServiceError(err.response.body.error.message);
+        }
     }
 
-    public async postPhoto(photo: File): Promise<void> {
-        await request.post(env.STATIC_SERVER_ENDPOINT + "/photos", {
-            formData: {
-                file: {
-                    value: fs.createReadStream(photo.path),
-                    options: {
-                        filename: photo.name,
-                        contentType: photo.mimetype,
+    public async processBanner(photo: File): Promise<{ bannerPath: string }> {
+        try {
+            const { data } = await request.post(env.STATIC_SERVER_ENDPOINT + "/banners", {
+                json: true,
+                formData: {
+                    banner: {
+                        value: fs.createReadStream(photo.path),
+                        options: {
+                            filename: photo.name,
+                            contentType: photo.mimetype,
+                        },
                     },
                 },
-            },
-        });
+            });
+            return data;
+        } catch (err) {
+            throw new StaticServiceError(err.response.body.error.message);
+        }
     }
 
-    public async postThumbnail(thumbnail: File): Promise<void> {
-        await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
-            formData: {
-                file: {
-                    value: fs.createReadStream(thumbnail.path),
-                    options: {
-                        filename: thumbnail.name,
-                        contentType: thumbnail.mimetype,
+    public async processAvatar(photo: File): Promise<{ avatarPath: string; iconPath: string }> {
+        try {
+            const { data } = await request.post(env.STATIC_SERVER_ENDPOINT + "/avatars", {
+                json: true,
+                formData: {
+                    avatar: {
+                        value: fs.createReadStream(photo.path),
+                        options: {
+                            filename: photo.name,
+                            contentType: photo.mimetype,
+                        },
                     },
                 },
-            },
-        });
+            });
+            return data;
+        } catch (err) {
+            throw new StaticServiceError(err.response.body.error.message);
+        }
+    }
+
+    public async processThumbnail(photo: File): Promise<{ thumbnailPath: string }> {
+        try {
+            const { data } = await request.post(env.STATIC_SERVER_ENDPOINT + "/thumbnails", {
+                json: true,
+                formData: {
+                    thumbnail: {
+                        value: fs.createReadStream(photo.path),
+                        options: {
+                            filename: photo.name,
+                            contentType: photo.mimetype,
+                        },
+                    },
+                },
+            });
+            return data;
+        } catch (err) {
+            throw new StaticServiceError(err.response.body.error.message);
+        }
     }
 
     public async deleteVideo(videoName: string): Promise<void> {

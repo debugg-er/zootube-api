@@ -1,5 +1,3 @@
-import * as path from "path";
-import * as sharp from "sharp";
 import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
@@ -11,16 +9,8 @@ import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/va
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
-import {
-    DEFAULT_AVATAR_PATH,
-    DEFAULT_BANNER_PATH,
-    DEFAULT_ICON_PATH,
-    User,
-} from "../entities/User";
-import { randomString } from "../utils/string_function";
+import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
-
-const tempPath = path.join(__dirname, "../../tmp");
 
 class UserController {
     @asyncHandler
@@ -91,7 +81,7 @@ class UserController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where({ uploadedBy: id })
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
@@ -129,7 +119,7 @@ class UserController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where({ uploadedBy: user })
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
@@ -217,63 +207,47 @@ class UserController {
         const { first_name, last_name, female } = req.body;
         const { avatar, banner } = req.files;
 
-        const userRepository = getRepository(User);
+        if (avatar) {
+            const avatarType = await FileType.fromFile(avatar.path);
+            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
+        }
+        if (banner) {
+            const bannerType = await FileType.fromFile(banner.path);
+            expect(bannerType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
+        }
 
+        const userRepository = getRepository(User);
         const user = await userRepository.findOne(req.local.auth.id);
 
         user.firstName = first_name || user.firstName;
         user.lastName = last_name || user.lastName;
-
         if (female !== undefined) {
             user.female = female === "1";
         }
 
+        // stop handle when user contain invalid property
+        user.validate();
+
         if (avatar) {
-            const avatarType = await FileType.fromFile(avatar.path);
-            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-
-            // stop handle when user contain invalid property
-            user.validate();
-
-            const iconName = randomString(32) + ".jpg";
-            const iconPath = path.join(tempPath, iconName);
-
-            await sharp(avatar.path).resize(64, 64).jpeg().toFile(iconPath);
-
-            await staticService.postPhoto(avatar);
-
-            await staticService.postPhoto({
-                mimetype: "image/jpeg",
-                type: "jpg",
-                path: iconPath,
-                name: iconName,
-            });
-
-            if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
+            const { avatarPath, iconPath } = await staticService.processAvatar(avatar);
+            if (user.avatarPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
             }
-            if (user.iconPath !== DEFAULT_ICON_PATH) {
+            if (user.iconPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
-            user.avatarPath = "/photos/" + avatar.name;
-            user.iconPath = "/photos/" + iconName;
-
-            req.local.tempFilePaths.push(iconPath);
+            user.avatarPath = avatarPath;
+            user.iconPath = iconPath;
         }
 
         if (banner) {
-            expect(banner.mimetype, "400:invalid file").to.match(/image/);
-
-            user.validate();
-
-            await staticService.postPhoto(banner);
-
-            if (user.bannerPath !== DEFAULT_BANNER_PATH) {
+            const { bannerPath } = await staticService.processBanner(banner);
+            if (user.bannerPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 
-            user.bannerPath = "/photos/" + banner.name;
+            user.bannerPath = bannerPath;
         }
 
         await userRepository.save(user);
