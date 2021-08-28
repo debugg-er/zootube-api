@@ -9,12 +9,7 @@ import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/va
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
-import {
-    DEFAULT_AVATAR_PATH,
-    DEFAULT_BANNER_PATH,
-    DEFAULT_ICON_PATH,
-    User,
-} from "../entities/User";
+import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
 
 class UserController {
@@ -212,30 +207,33 @@ class UserController {
         const { first_name, last_name, female } = req.body;
         const { avatar, banner } = req.files;
 
-        const userRepository = getRepository(User);
+        if (avatar) {
+            const avatarType = await FileType.fromFile(avatar.path);
+            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
+        }
+        if (banner) {
+            const bannerType = await FileType.fromFile(banner.path);
+            expect(bannerType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
+        }
 
+        const userRepository = getRepository(User);
         const user = await userRepository.findOne(req.local.auth.id);
 
         user.firstName = first_name || user.firstName;
         user.lastName = last_name || user.lastName;
-
         if (female !== undefined) {
             user.female = female === "1";
         }
 
+        // stop handle when user contain invalid property
+        user.validate();
+
         if (avatar) {
-            const avatarType = await FileType.fromFile(avatar.path);
-            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-
-            // stop handle when user contain invalid property
-            user.validate();
-
             const { avatarPath, iconPath } = await staticService.processAvatar(avatar);
-
-            if (user.avatarPath !== DEFAULT_AVATAR_PATH) {
+            if (user.avatarPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
             }
-            if (user.iconPath !== DEFAULT_ICON_PATH) {
+            if (user.iconPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
@@ -244,11 +242,8 @@ class UserController {
         }
 
         if (banner) {
-            expect(banner.mimetype, "400:invalid file").to.match(/image/);
-            user.validate();
-
             const { bannerPath } = await staticService.processBanner(banner);
-            if (user.bannerPath !== DEFAULT_BANNER_PATH) {
+            if (user.bannerPath !== null) {
                 await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 

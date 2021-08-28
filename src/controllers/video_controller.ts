@@ -252,6 +252,11 @@ class VideoController {
         const { thumbnail } = req.files;
         const { video } = req.local;
 
+        if (thumbnail) {
+            const thumbnailType = await FileType.fromFile(thumbnail.path);
+            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
+        }
+
         video.title = title || video.title;
         video.description = description || video.description;
 
@@ -261,12 +266,8 @@ class VideoController {
             });
         }
 
+        video.validate();
         if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
-
-            video.validate();
-
             const { thumbnailPath } = await staticService.processThumbnail(thumbnail);
             await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
