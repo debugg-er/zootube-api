@@ -21,7 +21,7 @@ class HistoryController {
             .leftJoinAndSelect("watchedVideos.video", "videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where({ userId: id })
             .orderBy("watchedVideos.watchedAt", "DESC")
             .skip(offset)

@@ -82,7 +82,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .loadRelationCountAndMap("videos.like", "videos.videoLikes", "a", (qb) =>
                 qb.andWhere("a.like = true"),
             )
@@ -153,7 +153,7 @@ class VideoController {
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .leftJoinAndSelect("videos.categories", "categories")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
@@ -223,7 +223,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .innerJoin(
                 (subquery) => {
                     return subquery
@@ -310,7 +310,7 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.videoLikes", "video_likes")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("video_likes.like = :isLiked", { isLiked: true })
             .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
             .skip(offset)
@@ -342,7 +342,7 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.username", "users.iconPath"])
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.id <> :videoId", { videoId: video_id })
             .skip(offset)
             .take(limit)
