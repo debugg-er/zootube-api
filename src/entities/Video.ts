@@ -48,6 +48,9 @@ export class Video {
     @Column("integer", { name: "views", default: () => "0" })
     views: number;
 
+    @Column("boolean", { name: "is_blocked", default: false, select: false })
+    isBlocked: boolean;
+
     @Column("timestamp with time zone", { name: "uploaded_at", default: () => "CURRENT_TIMESTAMP" })
     uploadedAt: Date;
 
