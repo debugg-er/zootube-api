@@ -3,6 +3,7 @@ declare module Express {
         auth?: import("../../interfaces/user").IUserToken;
         video?: import("../../entities/Video").Video;
         comment?: import("../../entities/Comment").Comment;
+        user?: import("../../entities/User").User;
         tempFilePaths: string[];
     }
 

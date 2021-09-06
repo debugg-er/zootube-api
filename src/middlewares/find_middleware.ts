@@ -1,4 +1,3 @@
-import { expect } from "chai";
 import { Request, Response, NextFunction } from "express";
 import { getRepository } from "typeorm";
 
@@ -9,36 +8,39 @@ import { Video } from "../entities/Video";
 
 class FindMiddleware {
     @asyncHander
-    public async isVideoExist(req: Request, res: Response, next: NextFunction) {
-        const { video_id } = req.params;
-
-        const countVideo = await getRepository(Video).count({ id: video_id });
-        expect(countVideo, "404:video not found").to.equal(1);
-
-        next();
-    }
-
-    @asyncHander
-    public async isCommentExistInVideo(req: Request, res: Response, next: NextFunction) {
-        const { video_id } = req.params;
-        const comment_id = +req.params.comment_id;
-
-        const countVideo = await getRepository(Comment).count({
-            id: comment_id,
-            video: { id: video_id },
-        });
-
-        expect(countVideo, "404:comment not found").to.equal(1);
+    public async findVideo(req: Request, res: Response, next: NextFunction) {
+        req.local.video = await getRepository(Video)
+            .createQueryBuilder("videos")
+            .addSelect("videos.isBlocked")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.id", "users.username", "users.isBlocked"])
+            .where("videos.id = :videoId", { videoId: req.params.video_id })
+            .getOne();
 
         next();
     }
 
     @asyncHander
-    public async isUserExist(req: Request, res: Response, next: NextFunction) {
-        const { username } = req.params;
+    public async findComment(req: Request, res: Response, next: NextFunction) {
+        req.local.comment = await getRepository(Comment)
+            .createQueryBuilder("comments")
+            .innerJoin("comments.user", "users")
+            .innerJoin("comments.video", "videos")
+            .addSelect(["users.id", "users.username", "users.isBlocked"])
+            .addSelect(["videos.id", "videos.isBlocked"])
+            .where("comments.id = :commentId", { commentId: +req.params.comment_id })
+            .getOne();
 
-        const countUser = await getRepository(User).count({ username: username });
-        expect(countUser, "404:user not found").to.equal(1);
+        next();
+    }
+
+    @asyncHander
+    public async findUser(req: Request, res: Response, next: NextFunction) {
+        req.local.user = await getRepository(User)
+            .createQueryBuilder("users")
+            .addSelect("users.isBlocked")
+            .where("users.username = :username", { username: req.params.username })
+            .getOne();
 
         next();
     }
