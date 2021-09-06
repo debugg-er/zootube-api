@@ -17,34 +17,48 @@ router.use(express.urlencoded({ extended: true }));
 
 router.use("/:video_id(\\w{10})/comments", commentRoute);
 
+// get subscription videos
 router.get("/subscription", authController.authorize, videoController.getSubscriptionVideos);
+
+// get liked videos
 router.get("/liked", authController.authorize, videoController.getLikedVideos);
 
+// get home videos
 router.get("/", videoController.getVideos);
 
+// get relate videos
 router.get(
     "/:video_id(\\w{10})/relate",
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
     videoController.getRelateVideos,
 );
 
+// get video
 router.get(
     "/:video_id(\\w{10})",
     authController.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
     videoController.getVideo,
 );
 
+// react video
 router.post(
     "/:video_id(\\w{10})/reaction",
     authController.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
     videoController.reactVideo,
 );
 
+// delete video reaction
 router.delete(
     "/:video_id(\\w{10})/reaction",
     authController.authorize,
@@ -53,6 +67,7 @@ router.delete(
     videoController.deleteVideoReaction,
 );
 
+// upload video
 router.post(
     "/",
     authController.authorize,
@@ -60,6 +75,7 @@ router.post(
     videoController.uploadVideo,
 );
 
+// update video
 router.patch(
     "/:video_id(\\w{10})",
     authController.authorize,
@@ -70,6 +86,7 @@ router.patch(
     videoController.updateVideo,
 );
 
+// delete video
 router.delete(
     "/:video_id(\\w{10})",
     authController.authorize,

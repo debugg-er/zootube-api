@@ -4,6 +4,7 @@ import { Category } from "../entities/Category";
 
 const router = express.Router();
 
+// get all categories
 router.get("/", async (req, res, next) => {
     try {
         const categories = await getRepository(Category).find();

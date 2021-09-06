@@ -11,14 +11,17 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+// subscribe user
 router.post(
     "/:username",
     authController.authorize,
     findMiddleware.findUser,
     checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
     subscriptionController.subscribe,
 );
 
+// unsubscribe user
 router.delete(
     "/:username",
     authController.authorize,
