@@ -14,6 +14,7 @@ class FindMiddleware {
             .addSelect("videos.isBlocked")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.id", "users.username", "users.isBlocked"])
+            .innerJoinAndSelect("users.role", "roles")
             .where("videos.id = :videoId", { videoId: req.params.video_id })
             .getOne();
 
@@ -39,6 +40,7 @@ class FindMiddleware {
         req.local.user = await getRepository(User)
             .createQueryBuilder("users")
             .addSelect("users.isBlocked")
+            .innerJoinAndSelect("users.role", "roles")
             .where("users.username = :username", { username: req.params.username })
             .getOne();
 

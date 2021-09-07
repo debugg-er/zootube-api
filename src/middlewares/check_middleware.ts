@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { Request, Response, NextFunction } from "express";
 
+import { ADMIN } from "../entities/Role";
 import asyncHander from "../decorators/async_handler";
 
 class CheckMiddleware {
@@ -53,6 +54,24 @@ class CheckMiddleware {
     @asyncHander
     public async checkCommentOwnerIsNotBlocked(req: Request, res: Response, next: NextFunction) {
         expect(req.local.comment.user.isBlocked, "405:comment owner was blocked").to.be.false;
+        next();
+    }
+
+    @asyncHander
+    public async checkAuthorizedUserIsAdmin(req: Request, res: Response, next: NextFunction) {
+        expect(req.local.auth.role, "403:permission denied").to.equal(ADMIN);
+        next();
+    }
+
+    @asyncHander
+    public async checkUserIsNotAdmin(req: Request, res: Response, next: NextFunction) {
+        expect(req.local.user.role.name, "403:permission denied").to.not.equal(ADMIN);
+        next();
+    }
+
+    @asyncHander
+    public async checkVideoOwnerIsNotAdmin(req: Request, res: Response, next: NextFunction) {
+        expect(req.local.video.uploadedBy.role.name, "403:permission denied").to.not.equal(ADMIN);
         next();
     }
 }

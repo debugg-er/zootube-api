@@ -98,6 +98,7 @@ export class User {
             const payload: IUserToken = {
                 id: this.id,
                 username: this.username,
+                role: this.role.name,
             };
 
             const option: jwt.SignOptions = {
