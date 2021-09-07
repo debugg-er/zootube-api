@@ -42,6 +42,7 @@ class UserController {
     @asyncHandler
     public async getUserProfile(req: Request, res: Response) {
         const { user } = req.local;
+        delete user.isBlocked;
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
             .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
@@ -75,6 +76,7 @@ class UserController {
 
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
+            .addSelect("videos.isBlocked")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
@@ -113,6 +115,7 @@ class UserController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.uploadedBy = :username", { username: username })
+            .andWhere("videos.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
@@ -145,6 +148,7 @@ class UserController {
             .leftJoin("subscriptions.user", "users")
             .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
             .where("subscriptions.subscriber = :userId", { userId: id })
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .getMany();

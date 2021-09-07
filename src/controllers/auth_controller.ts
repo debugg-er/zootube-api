@@ -25,6 +25,7 @@ class AuthController {
             firstName: first_name,
             lastName: last_name,
             female: female,
+            isBlocked: false,
         });
 
         await userRepository.insert(newUser);
@@ -46,10 +47,11 @@ class AuthController {
         const user = await userRepository.findOne(
             { username: username },
             // signJWT require these fields
-            { select: ["id", "username", "password", "firstName", "lastName", "iconPath"] },
+            { select: ["id", "username", "password", "isBlocked"] },
         );
 
-        expect(user, "400:username doesn't exists").to.exist;
+        expect(user, "404:username doesn't exists").to.exist;
+        expect(user.isBlocked, "405:user was blocked").to.be.false;
 
         const isPasswordMatch = await user.comparePassword(password);
         expect(isPasswordMatch, "400:password don't match").to.be.true;

@@ -23,6 +23,8 @@ class HistoryController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where({ userId: id })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("watchedVideos.watchedAt", "DESC")
             .skip(offset)
             .take(limit)

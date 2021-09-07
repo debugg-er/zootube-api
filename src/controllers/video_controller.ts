@@ -155,6 +155,8 @@ class VideoController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .leftJoinAndSelect("videos.categories", "categories")
+            .where("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
@@ -234,6 +236,8 @@ class VideoController {
                 "subscriptions",
                 "subscriptions.user_id = videos.uploadedBy",
             )
+            .where("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -313,6 +317,8 @@ class VideoController {
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("video_likes.like = :isLiked", { isLiked: true })
             .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .getMany();
@@ -344,6 +350,8 @@ class VideoController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.id <> :videoId", { videoId: video_id })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .orderBy("videos.uploadedAt", "DESC");
