@@ -25,11 +25,14 @@ module.exports.takeRandomEleInArray = function (arr, n) {
 
 module.exports.promisePool = async function (items, concurrency, transformer) {
     const _items = [...items];
+    const result = [];
 
     while (_items.length > 0) {
-        const slice = items.splice(0, concurrency);
-        await Promise.all(slice.map(transformer));
+        const slice = _items.splice(0, concurrency);
+        const ps = await Promise.all(slice.map(transformer));
+        result.push(...ps);
     }
+    return result;
 };
 
 module.exports.parseTokens = function (tokens) {

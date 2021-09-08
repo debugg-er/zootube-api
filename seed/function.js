@@ -12,33 +12,6 @@ const vietnameseCharacters =
 
 const nameRegex = new RegExp(`^(?! )[ a-zA-Z${vietnameseCharacters}]+(?<! )$`);
 
-module.exports.createUser = async function (numUser) {
-    let users = JSON.parse(fs.readFileSync("./users.json", "utf8")).slice(0, numUser);
-
-    const tokens = [];
-
-    while (users.length > 0) {
-        const regiss = users.splice(0, 50).map((u) =>
-            request
-                .post(apiBaseUrl + "/auth/register", {
-                    form: {
-                        username: u.login.username,
-                        password: USER_DEFAULT_PASSWORD,
-                        first_name: u.name.first,
-                        last_name: u.name.last,
-                        female: u.gender === "female" ? "1" : "0",
-                    },
-                    json: true,
-                })
-                .then((res) => tokens.push(res.data.token))
-                .catch((e) => console.log(e.message)),
-        );
-        const responses = await Promise.all(regiss);
-    }
-
-    return tokens;
-};
-
 async function createVideo({ publisher, users, videoPath, id, categories }) {
     const gRes = await request.get(
         `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${id}&key=${GOOGLE_API_KEY}`,
@@ -53,6 +26,7 @@ async function createVideo({ publisher, users, videoPath, id, categories }) {
             title: videoData.snippet.title,
             description: videoData.snippet.description,
             categories: categories,
+            early_response: "0",
         },
         headers: {
             Authorization: "Barear " + publisher,
@@ -97,8 +71,7 @@ async function createReplies({ commentId, videoId, publishers, repliesData, n })
     const takenRepliesData = repliesData.slice(0, n);
     const creates = takenRepliesData.map(async (item) => {
         if (item.snippet.textOriginal === "") return;
-        const [_publisher] = takeRandomEleInArray(publishers, 1);
-        const [publisher] = parseTokens([_publisher]);
+        const [publisher] = takeRandomEleInArray(publishers, 1);
 
         await query(
             "INSERT INTO comments(content, created_at, video_id, user_id, parent_id) VALUES ($1, $2, $3, $4, $5)",
@@ -124,7 +97,7 @@ async function createComments({ id, videoId, publishers, n }) {
         let items;
         try {
             const gRes = await request.get(
-                `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=30&videoId=${id}&pageToken=${pageToken}&key=${GOOGLE_API_KEY}`,
+                `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=100&videoId=${id}&pageToken=${pageToken}&key=${GOOGLE_API_KEY}`,
                 { json: true },
             );
             pageToken = gRes.nextPageToken;
@@ -133,11 +106,12 @@ async function createComments({ id, videoId, publishers, n }) {
             return;
         }
 
-        const takenItems = items.slice(0, n - comments.length);
-        for (const item of takenItems) {
-            if (item.snippet.topLevelComment.snippet.textOriginal === "") continue;
-            const [_publisher] = takeRandomEleInArray(publishers, 1);
-            const [publisher] = parseTokens([_publisher]);
+        const takenItems = items
+            .slice(0, n - count)
+            .filter((item) => item.snippet.topLevelComment.snippet.textOriginal !== "");
+
+        async function createCommentTransfomer(item) {
+            const [publisher] = takeRandomEleInArray(publishers, 1);
 
             const { rows } = await query(
                 "INSERT INTO comments(content, created_at, video_id, user_id) VALUES ($1, $2, $3, $4) RETURNING id",
@@ -165,7 +139,7 @@ async function createComments({ id, videoId, publishers, n }) {
             if (likeReactors.length > 0) {
                 await reactComment({
                     videoId,
-                    commentId: comment.id,
+                    commentId: commentId,
                     react: true,
                     reactors: likeReactors,
                 });
@@ -173,7 +147,7 @@ async function createComments({ id, videoId, publishers, n }) {
             if (dislikeReactors.length > 0) {
                 await reactComment({
                     videoId,
-                    commentId: comment.id,
+                    commentId: commentId,
                     react: false,
                     reactors: dislikeReactors,
                 });
@@ -181,7 +155,7 @@ async function createComments({ id, videoId, publishers, n }) {
 
             if (item.replies) {
                 const replies = await createReplies({
-                    commentId: comment.id,
+                    commentId: commentId,
                     videoId,
                     publishers,
                     repliesData: item.replies.comments,
@@ -190,20 +164,72 @@ async function createComments({ id, videoId, publishers, n }) {
             }
             count++;
         }
+
+        await promisePool(takenItems, 5, createCommentTransfomer);
     } while (count < n && pageToken);
 }
 
 async function reactComment({ videoId, commentId, reactors, react }) {
     const q = `INSERT INTO comment_likes(comment_id, user_id, "like") VALUES ($1, $2, $3)`;
-    const _reactors = parseTokens(reactors);
-    await promisePool(_reactors, 50, (reactor) => query(q, [commentId, reactor.id, react]));
+    await promisePool(reactors, 50, (reactor) => query(q, [commentId, reactor.id, react]));
 }
 
 async function reactVideo({ videoId, reactors, react }) {
     const q = `INSERT INTO video_likes(video_id, user_id, "like") VALUES ($1, $2, $3)`;
-    const _reactors = parseTokens(reactors);
-    await promisePool(_reactors, 50, (reactor) => query(q, [videoId, reactor.id, react]));
+    await promisePool(reactors, 50, (reactor) => query(q, [videoId, reactor.id, react]));
 }
+
+module.exports.createUser = async function (numUser) {
+    let users = JSON.parse(fs.readFileSync("./users.json", "utf8")).slice(0, numUser);
+
+    const tokens = [];
+
+    while (users.length > 0) {
+        const regiss = users.splice(0, 50).map((u) =>
+            request
+                .post(apiBaseUrl + "/auth/register", {
+                    form: {
+                        username: u.login.username,
+                        password: USER_DEFAULT_PASSWORD,
+                        first_name: u.name.first,
+                        last_name: u.name.last,
+                        female: u.gender === "female" ? "1" : "0",
+                    },
+                    json: true,
+                })
+                .then((res) => tokens.push(res.data.token))
+                .catch((e) => console.log(e.message)),
+        );
+        const responses = await Promise.all(regiss);
+    }
+
+    return tokens;
+};
+
+module.exports.login = function (userList) {
+    return promisePool(userList, 50, (user) =>
+        request
+            .post(apiBaseUrl + "/auth/login", {
+                form: {
+                    username: user.username,
+                    password: USER_DEFAULT_PASSWORD,
+                },
+                json: true,
+            })
+            .then((res) => res.data.token),
+    );
+};
+
+module.exports.subscribe = function ({ user, subscribers }) {
+    const [_user] = parseTokens([user]);
+    const _subscribers = parseTokens(subscribers);
+
+    const subscription = randomRange(0, _subscribers.length);
+    const sbers = takeRandomEleInArray(_subscribers, subscription);
+
+    const q = "INSERT INTO subscriptions(user_id, subscriber_id) VALUES ($1, $2)";
+    return promisePool(sbers, 50, (b) => query(q, [_user.id, b.id]).catch(() => {}));
+};
 
 module.exports.createVideo = async function ({ publisher, users, videoPath, categories }) {
     const [id] = videoPath.replace(/^.*[\\\/]/, "").split(".");
@@ -211,15 +237,17 @@ module.exports.createVideo = async function ({ publisher, users, videoPath, cate
     const { video, videoData } = await createVideo({
         id,
         publisher,
-        users,
+        users: parseTokens(users),
         videoPath,
         categories: categories.join(","),
     });
 
-    const comments = await createComments({
+    console.log(`uploading ${id} done, waiting to insert data`);
+
+    await createComments({
         id,
         videoId: video.id,
-        publishers: users,
+        publishers: parseTokens(users),
         n: videoData.statistics.commentCount % users.length,
     });
 };
