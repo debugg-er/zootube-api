@@ -1,11 +1,11 @@
 const fs = require("fs");
 const request = require("request-promise");
-const { takeRandomEleInArray, randomRange } = require("./util");
+const { takeRandomEleInArray, randomRange, promisePool, parseTokens } = require("./util");
 const { query } = require("./db");
 
-const [, , baseUrl] = process.argv;
+const [, , apiBaseUrl] = process.argv;
 const { USER_DEFAULT_PASSWORD, GOOGLE_API_KEY } = process.env;
-if (!baseUrl) throw new Error("missing argument");
+if (!apiBaseUrl) throw new Error("missing argument");
 
 const vietnameseCharacters =
     "ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ";
@@ -20,7 +20,7 @@ module.exports.createUser = async function (numUser) {
     while (users.length > 0) {
         const regiss = users.splice(0, 50).map((u) =>
             request
-                .post(baseUrl + "/auth/register", {
+                .post(apiBaseUrl + "/auth/register", {
                     form: {
                         username: u.login.username,
                         password: USER_DEFAULT_PASSWORD,
@@ -47,7 +47,7 @@ async function createVideo({ publisher, users, videoPath, id, categories }) {
 
     const videoData = gRes.items[0];
 
-    const { data: video } = await request.post(baseUrl + "/videos/", {
+    const { data: video } = await request.post(apiBaseUrl + "/videos/", {
         formData: {
             video: fs.createReadStream(videoPath),
             title: videoData.snippet.title,
@@ -96,27 +96,20 @@ async function createVideo({ publisher, users, videoPath, id, categories }) {
 async function createReplies({ commentId, videoId, publishers, repliesData, n }) {
     const takenRepliesData = repliesData.slice(0, n);
     const creates = takenRepliesData.map(async (item) => {
-        const [publisher] = takeRandomEleInArray(publishers, 1);
         if (item.snippet.textOriginal === "") return;
-        const { data: reply } = await request.post(
-            baseUrl + `/videos/${videoId}/comments/${commentId}`,
-            {
-                json: true,
-                form: {
-                    content: item.snippet.textOriginal.substring(0, 2000),
-                },
-                headers: {
-                    Authorization: "Barear " + publisher,
-                },
-            },
+        const [_publisher] = takeRandomEleInArray(publishers, 1);
+        const [publisher] = parseTokens([_publisher]);
+
+        await query(
+            "INSERT INTO comments(content, created_at, video_id, user_id, parent_id) VALUES ($1, $2, $3, $4, $5)",
+            [
+                item.snippet.textOriginal.substring(0, 2000),
+                new Date(item.snippet.publishedAt),
+                videoId,
+                publisher.id,
+                commentId,
+            ],
         );
-
-        await query("UPDATE comments SET created_at = $1 WHERE id = $2", [
-            new Date(item.snippet.publishedAt),
-            reply.id,
-        ]);
-
-        return reply;
     });
 
     return Promise.all(creates);
@@ -125,8 +118,7 @@ async function createReplies({ commentId, videoId, publishers, repliesData, n })
 async function createComments({ id, videoId, publishers, n }) {
     let pageToken = "";
 
-    const comments = [];
-    let i = 1;
+    let count = 1;
 
     do {
         let items;
@@ -144,21 +136,20 @@ async function createComments({ id, videoId, publishers, n }) {
         const takenItems = items.slice(0, n - comments.length);
         for (const item of takenItems) {
             if (item.snippet.topLevelComment.snippet.textOriginal === "") continue;
-            const [publisher] = takeRandomEleInArray(publishers, 1);
-            const { data: comment } = await request.post(baseUrl + `/videos/${videoId}/comments`, {
-                json: true,
-                form: {
-                    content: item.snippet.topLevelComment.snippet.textOriginal.substring(0, 2000),
-                },
-                headers: {
-                    Authorization: "Barear " + publisher,
-                },
-            });
+            const [_publisher] = takeRandomEleInArray(publishers, 1);
+            const [publisher] = parseTokens([_publisher]);
 
-            await query("UPDATE comments SET created_at = $1 WHERE id = $2", [
-                new Date(item.snippet.topLevelComment.snippet.publishedAt),
-                comment.id,
-            ]);
+            const { rows } = await query(
+                "INSERT INTO comments(content, created_at, video_id, user_id) VALUES ($1, $2, $3, $4) RETURNING id",
+                [
+                    item.snippet.topLevelComment.snippet.textOriginal.substring(0, 2000),
+                    new Date(item.snippet.topLevelComment.snippet.publishedAt),
+                    videoId,
+                    publisher.id,
+                ],
+            );
+
+            const [{ id: commentId }] = rows;
 
             const likeCount = item.snippet.topLevelComment.snippet.likeCount;
             const dislikeCount = randomRange(0, likeCount * 0.1);
@@ -197,47 +188,21 @@ async function createComments({ id, videoId, publishers, n }) {
                     n: item.replies.comments.length < 30 ? item.replies.comments.length : 30,
                 });
             }
-            comments.push(comment);
+            count++;
         }
-    } while (comments.length < n && pageToken);
-
-    return comments;
+    } while (count < n && pageToken);
 }
 
 async function reactComment({ videoId, commentId, reactors, react }) {
-    while (reactors.length > 0) {
-        const l = reactors.splice(0, 20);
-
-        const doReacts = l.map((i) =>
-            request.post(baseUrl + `/videos/${videoId}/comments/${commentId}/reaction`, {
-                form: {
-                    reaction: react ? "like" : "dislike",
-                },
-                headers: {
-                    Authorization: "Barear " + i,
-                },
-            }),
-        );
-        await Promise.all(doReacts);
-    }
+    const q = `INSERT INTO comment_likes(comment_id, user_id, "like") VALUES ($1, $2, $3)`;
+    const _reactors = parseTokens(reactors);
+    await promisePool(_reactors, 50, (reactor) => query(q, [commentId, reactor.id, react]));
 }
 
 async function reactVideo({ videoId, reactors, react }) {
-    while (reactors.length > 0) {
-        const l = reactors.splice(0, 50);
-
-        const doReacts = l.map((i) =>
-            request.post(baseUrl + `/videos/${videoId}/reaction`, {
-                form: {
-                    reaction: react ? "like" : "dislike",
-                },
-                headers: {
-                    Authorization: "Barear " + i,
-                },
-            }),
-        );
-        await Promise.all(doReacts);
-    }
+    const q = `INSERT INTO video_likes(video_id, user_id, "like") VALUES ($1, $2, $3)`;
+    const _reactors = parseTokens(reactors);
+    await promisePool(_reactors, 50, (reactor) => query(q, [videoId, reactor.id, react]));
 }
 
 module.exports.createVideo = async function ({ publisher, users, videoPath, categories }) {

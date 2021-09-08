@@ -1,3 +1,5 @@
+const jwt = require("jsonwebtoken");
+
 module.exports.randomRange = function (min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
@@ -28,4 +30,8 @@ module.exports.promisePool = async function (items, concurrency, transformer) {
         const slice = items.splice(0, concurrency);
         await Promise.all(slice.map(transformer));
     }
+};
+
+module.exports.parseTokens = function (tokens) {
+    return tokens.map((token) => jwt.decode(token));
 };

@@ -59,7 +59,7 @@ async function handleVideos(publishers, users) {
 
 async function main() {
     console.log("creating users...");
-    const tokens = await createUser(2000);
+    const tokens = await createUser(200);
     console.log("create user done !!");
 
     await handleVideos(tokens.slice(0, 30), tokens);
