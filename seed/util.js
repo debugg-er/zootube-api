@@ -20,3 +20,12 @@ module.exports.takeRandomEleInArray = function (arr, n) {
     }
     return result;
 };
+
+module.exports.promisePool = async function (items, concurrency, transformer) {
+    const _items = [...items];
+
+    while (_items.length > 0) {
+        const slice = items.splice(0, concurrency);
+        await Promise.all(slice.map(transformer));
+    }
+};

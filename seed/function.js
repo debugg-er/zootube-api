@@ -4,6 +4,7 @@ const { takeRandomEleInArray, randomRange } = require("./util");
 const { query } = require("./db");
 
 const [, , baseUrl] = process.argv;
+const { USER_DEFAULT_PASSWORD, GOOGLE_API_KEY } = process.env;
 if (!baseUrl) throw new Error("missing argument");
 
 const vietnameseCharacters =
@@ -11,22 +12,8 @@ const vietnameseCharacters =
 
 const nameRegex = new RegExp(`^(?! )[ a-zA-Z${vietnameseCharacters}]+(?<! )$`);
 
-const googleApiKey = "AIzaSyDsjNTYmvYcFkQ6uEhoYY47bCNzBgqyZE4";
-
 module.exports.createUser = async function (numUser) {
-    let users = [];
-    do {
-        console.log("fetchng user data");
-        const res = await request.get("https://randomuser.me/api?results=300", {
-            json: true,
-        });
-
-        let _users = res.results.filter(
-            (u) => nameRegex.test(u.name.first) && nameRegex.test(u.name.last),
-        );
-
-        users.push(..._users.slice(0, numUser - users.length));
-    } while (users.length < numUser);
+    let users = JSON.parse(fs.readFileSync("./users.json", "utf8")).slice(0, numUser);
 
     const tokens = [];
 
@@ -36,7 +23,7 @@ module.exports.createUser = async function (numUser) {
                 .post(baseUrl + "/auth/register", {
                     form: {
                         username: u.login.username,
-                        password: "password",
+                        password: USER_DEFAULT_PASSWORD,
                         first_name: u.name.first,
                         last_name: u.name.last,
                         female: u.gender === "female" ? "1" : "0",
@@ -54,7 +41,7 @@ module.exports.createUser = async function (numUser) {
 
 async function createVideo({ publisher, users, videoPath, id, categories }) {
     const gRes = await request.get(
-        `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${id}&key=AIzaSyDsjNTYmvYcFkQ6uEhoYY47bCNzBgqyZE4`,
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${id}&key=${GOOGLE_API_KEY}`,
         { json: true },
     );
 
@@ -145,7 +132,7 @@ async function createComments({ id, videoId, publishers, n }) {
         let items;
         try {
             const gRes = await request.get(
-                `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=30&videoId=${id}&pageToken=${pageToken}&key=AIzaSyDsjNTYmvYcFkQ6uEhoYY47bCNzBgqyZE4`,
+                `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=30&videoId=${id}&pageToken=${pageToken}&key=${GOOGLE_API_KEY}`,
                 { json: true },
             );
             pageToken = gRes.nextPageToken;
