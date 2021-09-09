@@ -3,6 +3,7 @@ import {
     BeforeUpdate,
     Column,
     Entity,
+    getManager,
     getRepository,
     Index,
     JoinColumn,
@@ -45,7 +46,14 @@ export class Video {
     })
     description: string | null;
 
-    @Column("integer", { name: "views", default: () => "0" })
+    @Column("bigint", {
+        name: "views",
+        transformer: {
+            to: (entityValue: number) => entityValue,
+            from: (databaseValue: string): number => parseInt(databaseValue, 10),
+        },
+        default: () => 0,
+    })
     views: number;
 
     @Column("boolean", { name: "is_blocked", default: false, select: false })
@@ -84,6 +92,10 @@ export class Video {
     react: boolean | null;
 
     // --- additional methods
+    async increaseView(): Promise<void> {
+        getManager().query("CALL spud_increase_video_view($1)", [this.id]);
+    }
+
     static async generateId(): Promise<string> {
         let id;
         do {

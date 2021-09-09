@@ -117,7 +117,7 @@ class VideoController {
             data: video,
         });
 
-        await videoRepository.update(video.id, { views: video.views + 1 });
+        await video.increaseView();
 
         // store history if user logged in
         if (req.local.auth) {
