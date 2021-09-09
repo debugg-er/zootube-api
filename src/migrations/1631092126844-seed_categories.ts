@@ -13,7 +13,7 @@ const data = [
     "Tự nhiên",
 ];
 
-export class categories1623917020011 implements MigrationInterface {
+export class seedCategories1631092126844 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         const values = data.map((d) => `('${d}')`).join(",");
         await queryRunner.query(`INSERT INTO categories(category) VALUES ${values}`);

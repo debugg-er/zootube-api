@@ -4,6 +4,7 @@ import authController from "../controllers/auth_controller";
 import commentController from "../controllers/comment_controller";
 
 import findMiddleware from "../middlewares/find_middleware";
+import checkMiddleware from "../middlewares/check_middleware";
 import identifyMiddleware from "../middlewares/identify_middleware";
 
 const router = express.Router({ mergeParams: true });
@@ -11,60 +12,109 @@ const router = express.Router({ mergeParams: true });
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+// get comments
 router.get(
     "/",
     authController.authorizeIfGiven,
-    findMiddleware.isVideoExist,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
     commentController.getVideoComments,
 );
 
+// get replies
 router.get(
     "/:comment_id(\\d+)",
     authController.authorizeIfGiven,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
+    checkMiddleware.checkCommentOwnerIsNotBlocked,
     commentController.getCommentReplies,
 );
 
+// comment
 router.post(
     "/",
     authController.authorize,
-    findMiddleware.isVideoExist,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
     commentController.postComment,
 );
 
+// reply comment
 router.post(
     "/:comment_id(\\d+)",
     authController.authorize,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
+    checkMiddleware.checkCommentOwnerIsNotBlocked,
     commentController.replyComment,
 );
 
+// react comment
 router.post(
     "/:comment_id(\\d+)/reaction",
     authController.authorize,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
+    checkMiddleware.checkCommentOwnerIsNotBlocked,
     commentController.reactComment,
 );
 
+// delete comment reaction
 router.delete(
     "/:comment_id(\\d+)/reaction",
     authController.authorize,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
     commentController.deleteCommentReaction,
 );
 
+// update own comment
 router.patch(
     "/:comment_id(\\d+)",
     authController.authorize,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    checkMiddleware.checkVideoIsNotBlocked,
+    checkMiddleware.checkVideoOwnerIsNotBlocked,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
     identifyMiddleware.isOwnComment,
     commentController.updateComment,
 );
 
+// delete own comment
 router.delete(
     "/:comment_id(\\d+)",
     authController.authorize,
-    findMiddleware.isCommentExistInVideo,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    findMiddleware.findComment,
+    checkMiddleware.checkCommentExist,
+    checkMiddleware.checkCommentExistInVideo,
     identifyMiddleware.isOwnComment,
     commentController.deleteComment,
 );

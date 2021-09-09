@@ -5,6 +5,8 @@ import {
     Column,
     Entity,
     Index,
+    JoinColumn,
+    ManyToOne,
     OneToMany,
     PrimaryGeneratedColumn,
 } from "typeorm";
@@ -22,6 +24,7 @@ import { nameRegex, passwordRegex, urlPathRegex, usernameRegex } from "../common
 import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
+import { Role } from "./Role";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -54,8 +57,15 @@ export class User {
     @Column("character varying", { name: "icon_path", length: 128 })
     iconPath: string | null;
 
+    @Column("boolean", { name: "is_blocked", default: false, select: false })
+    isBlocked: boolean;
+
     @Column("timestamp with time zone", { name: "joined_at", default: () => "CURRENT_TIMESTAMP" })
     joinedAt: Date;
+
+    @ManyToOne(() => Role, (roles) => roles.users)
+    @JoinColumn([{ name: "role_id", referencedColumnName: "id" }])
+    role: Role;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.user)
     commentLikes: CommentLike[];
@@ -88,6 +98,7 @@ export class User {
             const payload: IUserToken = {
                 id: this.id,
                 username: this.username,
+                role: this.role.name,
             };
 
             const option: jwt.SignOptions = {

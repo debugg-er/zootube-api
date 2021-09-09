@@ -41,11 +41,8 @@ class UserController {
 
     @asyncHandler
     public async getUserProfile(req: Request, res: Response) {
-        const { username } = req.params;
-
-        const user = await getRepository(User).findOne({ username: username });
-
-        expect(user, "404:user not found").to.exist;
+        const { user } = req.local;
+        delete user.isBlocked;
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
             .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
@@ -79,6 +76,7 @@ class UserController {
 
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
+            .addSelect("videos.isBlocked")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
@@ -111,16 +109,13 @@ class UserController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const user = await getRepository(User).findOne({ username }, { select: ["id"] });
-
-        expect(user, "404:user not found").to.exist;
-
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where({ uploadedBy: user })
+            .where("videos.uploadedBy = :username", { username: username })
+            .andWhere("videos.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
@@ -153,6 +148,7 @@ class UserController {
             .leftJoin("subscriptions.user", "users")
             .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
             .where("subscriptions.subscriber = :userId", { userId: id })
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .getMany();

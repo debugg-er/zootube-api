@@ -22,11 +22,13 @@ class VideoController {
     @isNumberIfExist("body.thumbnail_timestamp")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
         const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
+        const early_response = req.body.early_response || "1";
         const { title, description, categories } = req.body;
         const { video } = req.files;
 
         const videoType = await FileType.fromFile(video.path);
         expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "mkv", "flv"]);
+        expect(early_response, "400:invalid parameters").to.be.oneOf(["0", "1"]);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = ~~(await getVideoDuration(video.path));
@@ -37,11 +39,13 @@ class VideoController {
                 "400:thumbnail_timestamp out of video duration",
             ).to.lessThan(duration);
         }
-        res.status(200).json({
-            data: {
-                message: "upload video success, waiting to process",
-            },
-        });
+        if (early_response === "1") {
+            res.status(200).json({
+                data: {
+                    message: "upload video success, waiting to process",
+                },
+            });
+        }
 
         const { videoPath, thumbnailPath } = await staticService.processVideo(
             video,
@@ -69,6 +73,11 @@ class VideoController {
 
         // use .save to also insert category entities
         await videoRepository.save(_video);
+        if (early_response === "0") {
+            res.status(200).json({
+                data: _video,
+            });
+        }
         next();
     }
 
@@ -108,7 +117,7 @@ class VideoController {
             data: video,
         });
 
-        await videoRepository.update(video.id, { views: video.views + 1 });
+        await video.increaseView();
 
         // store history if user logged in
         if (req.local.auth) {
@@ -155,6 +164,8 @@ class VideoController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .leftJoinAndSelect("videos.categories", "categories")
+            .where("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
@@ -234,6 +245,8 @@ class VideoController {
                 "subscriptions",
                 "subscriptions.user_id = videos.uploadedBy",
             )
+            .where("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -313,6 +326,8 @@ class VideoController {
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("video_likes.like = :isLiked", { isLiked: true })
             .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .getMany();
@@ -344,6 +359,8 @@ class VideoController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.id <> :videoId", { videoId: video_id })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
             .orderBy("videos.uploadedAt", "DESC");
