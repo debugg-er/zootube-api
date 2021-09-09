@@ -1,6 +1,13 @@
 const fs = require("fs");
 const request = require("request-promise");
-const { takeRandomEleInArray, randomRange, promisePool, parseTokens } = require("./util");
+const {
+    takeRandomEleInArray,
+    randomRange,
+    promisePool,
+    parseTokens,
+    dateDiff,
+    dateAdd,
+} = require("./util");
 const { query } = require("./db");
 
 const [, , apiBaseUrl] = process.argv;
@@ -11,6 +18,22 @@ const vietnameseCharacters =
     "ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ";
 
 const nameRegex = new RegExp(`^(?! )[ a-zA-Z${vietnameseCharacters}]+(?<! )$`);
+
+async function createViews({ video, uploadedAt, viewPerDayRange }) {
+    const [from, to] = viewPerDayRange;
+    const days = dateDiff(uploadedAt, new Date());
+    const dates = new Array(days).fill(0).map((_, i) => dateAdd(uploadedAt, i));
+    const q = 'INSERT INTO video_views (video_id, "date", views) VALUES ($1, $2, $3)';
+    let totalViews = 0;
+
+    await promisePool(dates, 200, (date) => {
+        const view = randomRange(from, to);
+        totalViews += view;
+        return query(q, [video.id, date, view]);
+    });
+
+    return totalViews;
+}
 
 async function createVideo({ publisher, users, videoPath, id, categories }) {
     const gRes = await request.get(
@@ -34,9 +57,17 @@ async function createVideo({ publisher, users, videoPath, id, categories }) {
         json: true,
     });
 
+    const uploadedAt = new Date(videoData.snippet.publishedAt);
+    const viewPerDay = ~~(videoData.statistics.viewCount / dateDiff(uploadedAt, new Date()));
+    const totalViews = await createViews({
+        video,
+        uploadedAt,
+        viewPerDayRange: [0, viewPerDay * 2],
+    });
+
     await query("UPDATE videos SET views = $1, uploaded_at = $2 WHERE id = $3", [
-        ~~(videoData.statistics.viewCount / 100),
-        new Date(videoData.snippet.publishedAt),
+        totalViews,
+        uploadedAt,
         video.id,
     ]);
 
@@ -165,18 +196,18 @@ async function createComments({ id, videoId, publishers, n }) {
             count++;
         }
 
-        await promisePool(takenItems, 5, createCommentTransfomer);
+        await promisePool(takenItems, 10, createCommentTransfomer);
     } while (count < n && pageToken);
 }
 
 async function reactComment({ videoId, commentId, reactors, react }) {
     const q = `INSERT INTO comment_likes(comment_id, user_id, "like") VALUES ($1, $2, $3)`;
-    await promisePool(reactors, 50, (reactor) => query(q, [commentId, reactor.id, react]));
+    await promisePool(reactors, 100, (reactor) => query(q, [commentId, reactor.id, react]));
 }
 
 async function reactVideo({ videoId, reactors, react }) {
     const q = `INSERT INTO video_likes(video_id, user_id, "like") VALUES ($1, $2, $3)`;
-    await promisePool(reactors, 50, (reactor) => query(q, [videoId, reactor.id, react]));
+    await promisePool(reactors, 100, (reactor) => query(q, [videoId, reactor.id, react]));
 }
 
 module.exports.createUser = async function (numUser) {

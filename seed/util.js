@@ -38,3 +38,14 @@ module.exports.promisePool = async function (items, concurrency, transformer) {
 module.exports.parseTokens = function (tokens) {
     return tokens.map((token) => jwt.decode(token));
 };
+
+module.exports.dateDiff = function (from, to) {
+    const diffTime = Math.abs(to - from);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+module.exports.dateAdd = function (date, days) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+};
