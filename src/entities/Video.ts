@@ -20,6 +20,7 @@ import { randomString } from "../utils/string_function";
 import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
+import {VideoView} from "./VideoView";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -77,6 +78,9 @@ export class Video {
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.video)
     watchedVideos: WatchedVideo[];
+
+    @OneToMany(() => VideoView, (videoView) => videoView.video)
+    videoViews: VideoView[];
 
     // --- virtual columns
     @VirtualColumn("integer")
