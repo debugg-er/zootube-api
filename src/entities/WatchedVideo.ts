@@ -20,9 +20,7 @@ export class WatchedVideo {
     @JoinColumn([{ name: "user_id", referencedColumnName: "id" }])
     user: User;
 
-    @ManyToOne(() => Video, (videos) => videos.watchedVideos, {
-        onDelete: "CASCADE",
-    })
+    @ManyToOne(() => Video, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
 }
