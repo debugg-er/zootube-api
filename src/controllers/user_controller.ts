@@ -11,6 +11,7 @@ import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
 import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
+import { Playlist } from "../entities/Playlist";
 
 class UserController {
     @asyncHandler
@@ -253,6 +254,56 @@ class UserController {
         });
 
         next();
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getOwnPlaylists(req: Request, res: Response) {
+        const { auth } = req.local;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .leftJoin("playlists.createdBy", "users")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .where({ createdBy: auth.id })
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getUserPlaylists(req: Request, res: Response) {
+        const { username } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .leftJoin("playlists.createdBy", "users")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .where("users.username = :username", { username: username })
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
+        });
     }
 }
 

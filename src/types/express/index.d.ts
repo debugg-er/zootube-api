@@ -4,6 +4,7 @@ declare module Express {
         video?: import("../../entities/Video").Video;
         comment?: import("../../entities/Comment").Comment;
         user?: import("../../entities/User").User;
+        playlist?: import("../../entities/Playlist").Playlist;
         tempFilePaths: string[];
     }
 

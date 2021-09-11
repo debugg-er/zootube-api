@@ -3,6 +3,7 @@ import { getRepository } from "typeorm";
 
 import asyncHander from "../decorators/async_handler";
 import { Comment } from "../entities/Comment";
+import { Playlist } from "../entities/Playlist";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
 
@@ -43,6 +44,20 @@ class FindMiddleware {
             .innerJoinAndSelect("users.role", "roles")
             .where("users.username = :username", { username: req.params.username })
             .getOne();
+
+        next();
+    }
+
+    @asyncHander
+    public async findPlaylist(req: Request, res: Response, next: NextFunction) {
+        req.local.playlist = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .innerJoin("playlists.createdBy", "users")
+            .addSelect(["users.id", "users.username", "users.isBlocked"])
+            .where("playlists.id = :playlistId", { playlistId: +req.params.playlist_id })
+            .getOne();
+
+        console.log(req.local.playlist);
 
         next();
     }

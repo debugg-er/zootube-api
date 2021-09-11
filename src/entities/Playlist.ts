@@ -1,5 +1,14 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import {PlaylistVideo} from "./PlaylistVideo";
+import {
+    Column,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
+} from "typeorm";
+import VirtualColumn from "../decorators/VirtualColumn";
+import { PlaylistVideo } from "./PlaylistVideo";
 import { User } from "./User";
 
 @Index("playlists_pkey", ["id"], { unique: true })
@@ -22,5 +31,8 @@ export class Playlist {
     createdBy: User;
 
     @OneToMany(() => PlaylistVideo, (playlistVideos) => playlistVideos.playlist)
-    playlistVideos: PlaylistVideo[]
+    playlistVideos: PlaylistVideo[];
+
+    @VirtualColumn("integer")
+    totalVideos: number | null;
 }

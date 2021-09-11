@@ -18,6 +18,9 @@ router.get("/profile", authController.authorize, userController.getOwnProfile);
 // get own videos
 router.get("/videos", authController.authorize, userController.getOwnVideos);
 
+// get own playlist
+router.get("/playlists", authController.authorize, userController.getOwnPlaylists);
+
 // get subscription users
 router.get("/subscriptions", authController.authorize, userController.getSubscriptions);
 
@@ -40,6 +43,15 @@ router.get(
     checkMiddleware.checkUserExist,
     checkMiddleware.checkUserIsNotBlocked,
     userController.getUserProfile,
+);
+
+// get user playlist
+router.get(
+    "/:username/playlists",
+    findMiddleware.findUser,
+    checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
+    userController.getUserPlaylists,
 );
 
 // update user
