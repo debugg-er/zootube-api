@@ -14,6 +14,7 @@ import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
+import { VideoView } from "../entities/VideoView";
 
 class VideoController {
     @asyncHandler
@@ -158,6 +159,9 @@ class VideoController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
         const category = req.query.category as string;
+        const sort = req.query.sort || "hot";
+
+        expect(sort, "400:invalid sort option").to.be.oneOf(["newest", "view_rate", "hot"]);
 
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
@@ -166,7 +170,6 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .where("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
-            .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
 
@@ -174,6 +177,29 @@ class VideoController {
             videoQueryBuilder = videoQueryBuilder.where("categories.category = :category", {
                 category: category,
             });
+        }
+
+        if (sort === "newest") {
+            videoQueryBuilder = videoQueryBuilder.orderBy("videos.uploadedAt", "DESC");
+        } else if (sort === "view_rate") {
+            videoQueryBuilder = videoQueryBuilder
+                .addSelect(
+                    "videos.views / (DATE_PART('DAY', CURRENT_DATE - videos.uploadedAt) + 1)",
+                    "view_rate",
+                )
+                .orderBy("view_rate", "DESC");
+        } else if (sort === "hot") {
+            videoQueryBuilder = videoQueryBuilder
+                .addSelect(
+                    (qb) =>
+                        qb
+                            .select("COALESCE(SUM(vv.views), 0)", "week_views")
+                            .from(VideoView, "vv")
+                            .where("vv.video_id = videos.id")
+                            .andWhere("vv.date > CURRENT_DATE - INTERVAL '7 DAYS'"),
+                    "week_views",
+                )
+                .orderBy("week_views", "DESC");
         }
 
         const videos = await videoQueryBuilder.getMany();
