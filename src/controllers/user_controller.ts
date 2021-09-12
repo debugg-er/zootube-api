@@ -150,11 +150,15 @@ class UserController {
             .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
             .where("subscriptions.subscriber = :userId", { userId: id })
             .andWhere("users.isBlocked IS FALSE")
+            .orderBy("subscriptions.subscribedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
 
-        const subscriptions = _subscriptions.map((subscription) => subscription.user);
+        const subscriptions = _subscriptions.map((subscription) => ({
+            ...subscription.user,
+            subscribedAt: subscription.subscribedAt,
+        }));
 
         res.status(200).json({
             data: subscriptions,
@@ -180,11 +184,15 @@ class UserController {
                 "subscribers.iconPath",
             ])
             .where("subscriptions.user = :userId", { userId: id })
+            .orderBy("subscriptions.subscribedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
 
-        const subscribers = _subscriptions.map((subscription) => subscription.subscriber);
+        const subscribers = _subscriptions.map((subscription) => ({
+            ...subscription.subscriber,
+            subscribedAt: subscription.subscribedAt,
+        }));
 
         res.status(200).json({
             data: subscribers,

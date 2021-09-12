@@ -15,13 +15,11 @@ import { Comment } from "./Comment";
 import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
-import { WatchedVideo } from "./WatchedVideo";
 import { randomString } from "../utils/string_function";
 import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
 import { VideoView } from "./VideoView";
-import { PlaylistVideo } from "./PlaylistVideo";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
