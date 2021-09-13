@@ -21,21 +21,20 @@ class UserController {
         const user = await getRepository(User).findOne(id);
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
-            .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
+            .select('COALESCE(COUNT(subscriber_id), 0) AS "totalSubscribers"')
             .where("user_id = :userId", { userId: id })
             .getRawOne();
 
         const { totalViews } = await createQueryBuilder("videos")
-            .select('SUM(views)::INT AS "totalViews"')
+            .select('COALESCE(SUM(views), 0) AS "totalViews"')
             .where("uploaded_by = :userId", { userId: id })
             .getRawOne();
 
         res.status(200).json({
             data: {
                 ...user,
-                // totalViews and totalSubscribers may be null if there is no videos or subscribers
-                totalViews: totalViews || 0,
-                totalSubscribers: totalSubscribers || 0,
+                totalViews: +totalViews,
+                totalSubscribers: +totalSubscribers,
             },
         });
     }
@@ -46,21 +45,20 @@ class UserController {
         delete user.isBlocked;
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
-            .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
+            .select('COALESCE(COUNT(subscriber_id), 0) AS "totalSubscribers"')
             .where("user_id = :userId", { userId: user.id })
             .getRawOne();
 
         const { totalViews } = await createQueryBuilder("videos")
-            .select('SUM(views)::INT AS "totalViews"')
+            .select('COALESCE(SUM(views), 0) AS "totalViews"')
             .where("uploaded_by = :userId", { userId: user.id })
             .getRawOne();
 
         res.status(200).json({
             data: {
                 ...user,
-                // totalViews and totalSubscribers may be null if there is no videos or subscribers
-                totalViews: totalViews || 0,
-                totalSubscribers: totalSubscribers || 0,
+                totalViews: +totalViews,
+                totalSubscribers: +totalSubscribers,
             },
         });
     }
