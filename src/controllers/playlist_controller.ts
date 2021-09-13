@@ -115,7 +115,7 @@ class PlaylistController {
             .createQueryBuilder("playlists")
             .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
             .innerJoin("playlists.createdBy", "users")
-            .addSelect(["users.id", "users.username", "users.firstName", "users.lastName"])
+            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
             .where({ id: playlist.id })
             .getOne();
 
@@ -136,6 +136,8 @@ class PlaylistController {
         const playlistVideos = await getRepository(PlaylistVideo)
             .createQueryBuilder("playlist_videos")
             .innerJoinAndSelect("playlist_videos.video", "videos")
+            .innerJoin("videos.uploadedBy", "users")
+            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
             .where({ playlistId: playlist.id })
             .orderBy("playlist_videos.addedAt", "DESC")
             .skip(offset)
