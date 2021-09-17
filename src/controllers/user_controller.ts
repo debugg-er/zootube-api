@@ -103,7 +103,7 @@ class UserController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getUserVideos(req: Request, res: Response) {
-        const { username } = req.params;
+        const { user } = req.local;
         const category = req.query.category as string;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
@@ -113,7 +113,7 @@ class UserController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where("videos.uploadedBy = :username", { username: username })
+            .where({ uploadedBy: user })
             .andWhere("videos.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)

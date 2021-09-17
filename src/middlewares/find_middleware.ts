@@ -57,8 +57,6 @@ class FindMiddleware {
             .where("playlists.id = :playlistId", { playlistId: +req.params.playlist_id })
             .getOne();
 
-        console.log(req.local.playlist);
-
         next();
     }
 }
