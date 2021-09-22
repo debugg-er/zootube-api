@@ -10,6 +10,12 @@ export class Subscription {
     @Column("integer", { primary: true, name: "subscriber_id" })
     subscriberId: number;
 
+    @Column("timestamp with time zone", {
+        name: "subscribed_at",
+        default: () => "CURRENT_TIMESTAMP",
+    })
+    subscribedAt: Date;
+
     @ManyToOne(() => User, (users) => users.subscribers, {
         onDelete: "CASCADE",
     })

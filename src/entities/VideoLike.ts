@@ -14,6 +14,12 @@ export class VideoLike {
     @Column("boolean", { name: "like" })
     like: boolean;
 
+    @Column("timestamp with time zone", {
+        name: "reacted_at",
+        default: () => "CURRENT_TIMESTAMP",
+    })
+    reactedAt: Date;
+
     @ManyToOne(() => User, (users) => users.videoLikes, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "user_id", referencedColumnName: "id" }])
     user: User;

@@ -4,7 +4,7 @@ import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
 
-import staticService from "../services/static_service";
+import mediaService from "../services/media_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
@@ -14,6 +14,7 @@ import { Video } from "../entities/Video";
 import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
+import { VideoView } from "../entities/VideoView";
 
 class VideoController {
     @asyncHandler
@@ -47,7 +48,7 @@ class VideoController {
             });
         }
 
-        const { videoPath, thumbnailPath } = await staticService.processVideo(
+        const { videoPath, thumbnailPath } = await mediaService.processVideo(
             video,
             thumbnail_timestamp || duration / 2,
         );
@@ -158,6 +159,9 @@ class VideoController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
         const category = req.query.category as string;
+        const sort = req.query.sort || "hot";
+
+        expect(sort, "400:invalid sort option").to.be.oneOf(["newest", "view_rate", "hot"]);
 
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
@@ -166,7 +170,6 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .where("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
-            .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);
 
@@ -174,6 +177,29 @@ class VideoController {
             videoQueryBuilder = videoQueryBuilder.where("categories.category = :category", {
                 category: category,
             });
+        }
+
+        if (sort === "newest") {
+            videoQueryBuilder = videoQueryBuilder.orderBy("videos.uploadedAt", "DESC");
+        } else if (sort === "view_rate") {
+            videoQueryBuilder = videoQueryBuilder
+                .addSelect(
+                    "videos.views / (DATE_PART('DAY', CURRENT_DATE - videos.uploadedAt) + 1)",
+                    "view_rate",
+                )
+                .orderBy("view_rate", "DESC");
+        } else if (sort === "hot") {
+            videoQueryBuilder = videoQueryBuilder
+                .addSelect(
+                    (qb) =>
+                        qb
+                            .select("COALESCE(SUM(vv.views), 0)", "week_views")
+                            .from(VideoView, "vv")
+                            .where("vv.video_id = videos.id")
+                            .andWhere("vv.date > CURRENT_DATE - INTERVAL '7 DAYS'"),
+                    "week_views",
+                )
+                .orderBy("week_views", "DESC");
         }
 
         const videos = await videoQueryBuilder.getMany();
@@ -281,8 +307,8 @@ class VideoController {
 
         video.validate();
         if (thumbnail) {
-            const { thumbnailPath } = await staticService.processThumbnail(thumbnail);
-            await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
+            const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
+            await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
             video.thumbnailPath = thumbnailPath;
         }
@@ -300,8 +326,8 @@ class VideoController {
     public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
-        await staticService.deleteVideo(extractFilenameFromPath(video.videoPath));
-        await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
+        await mediaService.deleteVideo(extractFilenameFromPath(video.videoPath));
+        await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
         await getRepository(Video).delete({ id: video.id });
 

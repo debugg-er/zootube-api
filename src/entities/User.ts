@@ -25,6 +25,7 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 import { Role } from "./Role";
+import {Playlist} from "./Playlist";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -87,6 +88,9 @@ export class User {
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.user)
     watchedVideos: WatchedVideo[];
+
+    @OneToMany(() => Playlist, (playlists) => playlists.createdBy)
+    playlists: Playlist[];
 
     // --- additional methods
     async comparePassword(password: string): Promise<boolean> {

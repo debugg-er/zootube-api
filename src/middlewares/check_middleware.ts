@@ -74,6 +74,19 @@ class CheckMiddleware {
         expect(req.local.video.uploadedBy.role.name, "403:permission denied").to.not.equal(ADMIN);
         next();
     }
+
+    @asyncHander
+    public async checkPlaylistExist(req: Request, res: Response, next: NextFunction) {
+        expect(req.local.playlist, "404:playlist not found").to.exist;
+        next();
+    }
+
+    @asyncHander
+    public async checkPlaylistOwnerIsNotBlocked(req: Request, res: Response, next: NextFunction) {
+        expect(req.local.playlist.createdBy.isBlocked, "405:playlist owner was blocked").to.be
+            .false;
+        next();
+    }
 }
 
 export default new CheckMiddleware();

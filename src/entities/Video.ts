@@ -15,11 +15,11 @@ import { Comment } from "./Comment";
 import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
-import { WatchedVideo } from "./WatchedVideo";
 import { randomString } from "../utils/string_function";
 import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
+import { VideoView } from "./VideoView";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -75,8 +75,8 @@ export class Video {
     @JoinColumn([{ name: "uploaded_by", referencedColumnName: "id" }])
     uploadedBy: User;
 
-    @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.video)
-    watchedVideos: WatchedVideo[];
+    @OneToMany(() => VideoView, (videoViews) => videoViews.video)
+    videoViews: VideoView[];
 
     // --- virtual columns
     @VirtualColumn("integer")

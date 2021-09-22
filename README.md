@@ -15,7 +15,7 @@ This project is a service of "vid" that provide RestfulAPI to build a video soci
 
 - Provide enviroment variables. _(you can use .env file to define)._
   - `PORT`: the port that the server will listen on. *(default: 8080)*
-  - `STATIC_SERVER_ENDPOINT`: url of static-file server, you could find the static-file server project at [here](https://github.com/backy4rd/vid-static). *(required)*
+  - `MEDIA_SERVER_ENDPOINT`: url of media server, you could find the media server project at [here](https://github.com/backy4rd/vid-static). *(required)*
   - `DB_PORT`: port of database. *(default: 5432)*
   - `DB_HOST`: host of database. *(default: "127.0.0.1")*
   - `DB_USERNAME`: username to access database. *(default: "postgres")*

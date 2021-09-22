@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
 
-import staticService from "../services/static_service";
+import mediaService from "../services/media_service";
 import asyncHandler from "../decorators/async_handler";
 import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
@@ -11,6 +11,7 @@ import { Subscription } from "../entities/Subscription";
 import { Video } from "../entities/Video";
 import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
+import { Playlist } from "../entities/Playlist";
 
 class UserController {
     @asyncHandler
@@ -20,21 +21,20 @@ class UserController {
         const user = await getRepository(User).findOne(id);
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
-            .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
+            .select('COALESCE(COUNT(subscriber_id), 0) AS "totalSubscribers"')
             .where("user_id = :userId", { userId: id })
             .getRawOne();
 
         const { totalViews } = await createQueryBuilder("videos")
-            .select('SUM(views)::INT AS "totalViews"')
+            .select('COALESCE(SUM(views), 0) AS "totalViews"')
             .where("uploaded_by = :userId", { userId: id })
             .getRawOne();
 
         res.status(200).json({
             data: {
                 ...user,
-                // totalViews and totalSubscribers may be null if there is no videos or subscribers
-                totalViews: totalViews || 0,
-                totalSubscribers: totalSubscribers || 0,
+                totalViews: +totalViews,
+                totalSubscribers: +totalSubscribers,
             },
         });
     }
@@ -45,21 +45,20 @@ class UserController {
         delete user.isBlocked;
 
         const { totalSubscribers } = await createQueryBuilder("subscriptions")
-            .select('COUNT(subscriber_id)::INT AS "totalSubscribers"')
+            .select('COALESCE(COUNT(subscriber_id), 0) AS "totalSubscribers"')
             .where("user_id = :userId", { userId: user.id })
             .getRawOne();
 
         const { totalViews } = await createQueryBuilder("videos")
-            .select('SUM(views)::INT AS "totalViews"')
+            .select('COALESCE(SUM(views), 0) AS "totalViews"')
             .where("uploaded_by = :userId", { userId: user.id })
             .getRawOne();
 
         res.status(200).json({
             data: {
                 ...user,
-                // totalViews and totalSubscribers may be null if there is no videos or subscribers
-                totalViews: totalViews || 0,
-                totalSubscribers: totalSubscribers || 0,
+                totalViews: +totalViews,
+                totalSubscribers: +totalSubscribers,
             },
         });
     }
@@ -104,7 +103,7 @@ class UserController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getUserVideos(req: Request, res: Response) {
-        const { username } = req.params;
+        const { user } = req.local;
         const category = req.query.category as string;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
@@ -114,7 +113,7 @@ class UserController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where("videos.uploadedBy = :username", { username: username })
+            .where({ uploadedBy: user })
             .andWhere("videos.isBlocked IS FALSE")
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
@@ -149,11 +148,15 @@ class UserController {
             .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
             .where("subscriptions.subscriber = :userId", { userId: id })
             .andWhere("users.isBlocked IS FALSE")
+            .orderBy("subscriptions.subscribedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
 
-        const subscriptions = _subscriptions.map((subscription) => subscription.user);
+        const subscriptions = _subscriptions.map((subscription) => ({
+            ...subscription.user,
+            subscribedAt: subscription.subscribedAt,
+        }));
 
         res.status(200).json({
             data: subscriptions,
@@ -179,11 +182,15 @@ class UserController {
                 "subscribers.iconPath",
             ])
             .where("subscriptions.user = :userId", { userId: id })
+            .orderBy("subscriptions.subscribedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
 
-        const subscribers = _subscriptions.map((subscription) => subscription.subscriber);
+        const subscribers = _subscriptions.map((subscription) => ({
+            ...subscription.subscriber,
+            subscribedAt: subscription.subscribedAt,
+        }));
 
         res.status(200).json({
             data: subscribers,
@@ -225,12 +232,12 @@ class UserController {
         user.validate();
 
         if (avatar) {
-            const { avatarPath, iconPath } = await staticService.processAvatar(avatar);
+            const { avatarPath, iconPath } = await mediaService.processAvatar(avatar);
             if (user.avatarPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.avatarPath));
             }
             if (user.iconPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
             user.avatarPath = avatarPath;
@@ -238,9 +245,9 @@ class UserController {
         }
 
         if (banner) {
-            const { bannerPath } = await staticService.processBanner(banner);
+            const { bannerPath } = await mediaService.processBanner(banner);
             if (user.bannerPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 
             user.bannerPath = bannerPath;
@@ -253,6 +260,56 @@ class UserController {
         });
 
         next();
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getOwnPlaylists(req: Request, res: Response) {
+        const { auth } = req.local;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .leftJoin("playlists.createdBy", "users")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .where({ createdBy: auth.id })
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getUserPlaylists(req: Request, res: Response) {
+        const { username } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .leftJoin("playlists.createdBy", "users")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .where("users.username = :username", { username: username })
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
+        });
     }
 }
 

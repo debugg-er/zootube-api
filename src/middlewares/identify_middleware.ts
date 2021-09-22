@@ -19,6 +19,14 @@ class IdentifyMiddleware {
         expect(comment.user.id, "400:comment doesn't belong to you").to.equal(auth.id);
         next();
     }
+
+    @asyncHandler
+    public async isOwnPlaylist(req: Request, res: Response, next: NextFunction) {
+        const { playlist, auth } = req.local;
+
+        expect(playlist.createdBy.id, "400:playlist doesn't belong to you").to.equal(auth.id);
+        next();
+    }
 }
 
 export default new IdentifyMiddleware();
