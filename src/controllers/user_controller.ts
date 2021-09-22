@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
 
-import staticService from "../services/static_service";
+import mediaService from "../services/media_service";
 import asyncHandler from "../decorators/async_handler";
 import { isBinaryIfExist, isNumberIfExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
@@ -232,12 +232,12 @@ class UserController {
         user.validate();
 
         if (avatar) {
-            const { avatarPath, iconPath } = await staticService.processAvatar(avatar);
+            const { avatarPath, iconPath } = await mediaService.processAvatar(avatar);
             if (user.avatarPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.avatarPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.avatarPath));
             }
             if (user.iconPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.iconPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.iconPath));
             }
 
             user.avatarPath = avatarPath;
@@ -245,9 +245,9 @@ class UserController {
         }
 
         if (banner) {
-            const { bannerPath } = await staticService.processBanner(banner);
+            const { bannerPath } = await mediaService.processBanner(banner);
             if (user.bannerPath !== null) {
-                await staticService.deletePhoto(extractFilenameFromPath(user.bannerPath));
+                await mediaService.deletePhoto(extractFilenameFromPath(user.bannerPath));
             }
 
             user.bannerPath = bannerPath;

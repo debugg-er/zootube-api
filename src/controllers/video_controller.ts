@@ -4,7 +4,7 @@ import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
 
-import staticService from "../services/static_service";
+import mediaService from "../services/media_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
@@ -48,7 +48,7 @@ class VideoController {
             });
         }
 
-        const { videoPath, thumbnailPath } = await staticService.processVideo(
+        const { videoPath, thumbnailPath } = await mediaService.processVideo(
             video,
             thumbnail_timestamp || duration / 2,
         );
@@ -307,8 +307,8 @@ class VideoController {
 
         video.validate();
         if (thumbnail) {
-            const { thumbnailPath } = await staticService.processThumbnail(thumbnail);
-            await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
+            const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
+            await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
             video.thumbnailPath = thumbnailPath;
         }
@@ -326,8 +326,8 @@ class VideoController {
     public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
-        await staticService.deleteVideo(extractFilenameFromPath(video.videoPath));
-        await staticService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
+        await mediaService.deleteVideo(extractFilenameFromPath(video.videoPath));
+        await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
         await getRepository(Video).delete({ id: video.id });
 
