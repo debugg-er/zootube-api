@@ -21,11 +21,19 @@ router.get("/videos", authController.authorize, userController.getOwnVideos);
 // get own playlist
 router.get("/playlists", authController.authorize, userController.getOwnPlaylists);
 
-// get subscription users
-router.get("/subscriptions", authController.authorize, userController.getSubscriptions);
+// get own subscription users
+router.get("/subscriptions", authController.authorize, userController.getOwnSubscriptions);
 
-// get subscriber
-router.get("/subscribers", authController.authorize, userController.getSubscribers);
+// get own subscriber
+router.get("/subscribers", authController.authorize, userController.getOwnSubscribers);
+
+// update user
+router.patch(
+    "/",
+    authController.authorize,
+    multipartMiddleware.storeUploadFiles("avatar", "banner"),
+    userController.updateProfile,
+);
 
 // get user videos
 router.get(
@@ -34,6 +42,24 @@ router.get(
     checkMiddleware.checkUserExist,
     checkMiddleware.checkUserIsNotBlocked,
     userController.getUserVideos,
+);
+
+// get user subscriptions
+router.get(
+    "/:username/subscriptions",
+    findMiddleware.findUser,
+    checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
+    userController.getUserSubscriptions,
+);
+
+// get user subscribers
+router.get(
+    "/:username/subscribers",
+    findMiddleware.findUser,
+    checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
+    userController.getUserSubscribers,
 );
 
 // get user profile
@@ -52,14 +78,6 @@ router.get(
     checkMiddleware.checkUserExist,
     checkMiddleware.checkUserIsNotBlocked,
     userController.getUserPlaylists,
-);
-
-// update user
-router.patch(
-    "/",
-    authController.authorize,
-    multipartMiddleware.storeUploadFiles("avatar", "banner"),
-    userController.updateProfile,
 );
 
 export default router;
