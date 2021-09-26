@@ -137,7 +137,7 @@ class UserController {
     @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
-    public async getSubscriptions(req: Request, res: Response) {
+    public async getOwnSubscriptions(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
@@ -167,7 +167,38 @@ class UserController {
     @isNumberIfExist("query.offset", "query.limit")
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
-    public async getSubscribers(req: Request, res: Response) {
+    public async getUserSubscriptions(req: Request, res: Response) {
+        const { username } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const _subscriptions = await getRepository(Subscription)
+            .createQueryBuilder("subscriptions")
+            .leftJoin("subscriptions.user", "users")
+            .addSelect(["users.username", "users.firstName", "users.lastName", "users.iconPath"])
+            .innerJoin("subscriptions.subscriber", "subscribers")
+            .where("subscribers.username = :username", { username: username })
+            .andWhere("users.isBlocked IS FALSE")
+            .orderBy("subscriptions.subscribedAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        const subscriptions = _subscriptions.map((subscription) => ({
+            ...subscription.user,
+            subscribedAt: subscription.subscribedAt,
+        }));
+
+        res.status(200).json({
+            data: subscriptions,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getOwnSubscribers(req: Request, res: Response) {
         const { id } = req.local.auth;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
@@ -182,6 +213,41 @@ class UserController {
                 "subscribers.iconPath",
             ])
             .where("subscriptions.user = :userId", { userId: id })
+            .orderBy("subscriptions.subscribedAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        const subscribers = _subscriptions.map((subscription) => ({
+            ...subscription.subscriber,
+            subscribedAt: subscription.subscribedAt,
+        }));
+
+        res.status(200).json({
+            data: subscribers,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getUserSubscribers(req: Request, res: Response) {
+        const { username } = req.params;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const _subscriptions = await getRepository(Subscription)
+            .createQueryBuilder("subscriptions")
+            .leftJoin("subscriptions.subscriber", "subscribers")
+            .addSelect([
+                "subscribers.username",
+                "subscribers.firstName",
+                "subscribers.lastName",
+                "subscribers.iconPath",
+            ])
+            .innerJoin("subscriptions.user", "users")
+            .where("users.username = :username", { username: username })
             .orderBy("subscriptions.subscribedAt", "DESC")
             .skip(offset)
             .take(limit)
