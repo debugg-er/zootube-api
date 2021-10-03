@@ -95,6 +95,7 @@ class VideoController {
 
         const video = await videoRepository
             .createQueryBuilder("videos")
+            .addSelect("videos.videoPath")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])

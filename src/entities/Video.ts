@@ -30,7 +30,7 @@ export class Video {
     @Column("character varying", { name: "title", length: 128 })
     title: string;
 
-    @Column("character varying", { name: "video_path", length: 128 })
+    @Column("character varying", { name: "video_path", length: 128, select: false })
     videoPath: string;
 
     @Column("character varying", { name: "thumbnail_path", length: 128 })
