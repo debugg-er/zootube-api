@@ -4,10 +4,15 @@ import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository, In } from "typeorm";
 
+import {
+    isBinaryIfExist,
+    isNumberIfExist,
+    mustExist,
+    mustExistOne,
+} from "../decorators/validate_decorators";
 import mediaService from "../services/media_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
-import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
 import { Category } from "../entities/Category";
 import { Video } from "../entities/Video";
@@ -21,6 +26,7 @@ class VideoController {
     @mustExist("body.title", "files.video")
     @mustMatchIfExist("body.categories", listRegex)
     @isNumberIfExist("body.thumbnail_timestamp")
+    @isBinaryIfExist("body.early_response")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
         const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
         const early_response = req.body.early_response || "1";
@@ -28,8 +34,7 @@ class VideoController {
         const { video } = req.files;
 
         const videoType = await FileType.fromFile(video.path);
-        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "mkv", "flv"]);
-        expect(early_response, "400:invalid parameters").to.be.oneOf(["0", "1"]);
+        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = ~~(await getVideoDuration(video.path));
