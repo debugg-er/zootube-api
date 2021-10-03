@@ -24,15 +24,17 @@ router.get("/subscription", authController.authorize, videoController.getSubscri
 router.get("/liked", authController.authorize, videoController.getLikedVideos);
 
 // get home videos
-router.get("/", videoController.getVideos);
+router.get("/", authController.authorizeIfGiven, videoController.getVideos);
 
 // get relate videos
 router.get(
     "/:video_id(\\w{10})/relate",
+    authController.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     videoController.getRelateVideos,
 );
 
@@ -44,6 +46,7 @@ router.get(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     videoController.getVideo,
 );
 
@@ -55,6 +58,7 @@ router.post(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     videoController.reactVideo,
 );
 

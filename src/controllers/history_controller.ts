@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
-import { getRepository } from "typeorm";
+import { Brackets, getRepository } from "typeorm";
 
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { WatchedVideo } from "../entities/WatchedVideo";
+import { PUBLIC_ID } from "../entities/Privacy";
 
 class HistoryController {
     @asyncHandler
@@ -12,7 +13,7 @@ class HistoryController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getWatchedVideos(req: Request, res: Response) {
-        const { id } = req.local.auth;
+        const { auth } = req.local;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
@@ -22,9 +23,16 @@ class HistoryController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where({ userId: id })
+            .where({ userId: auth.id })
             .andWhere("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
+            .andWhere(
+                new Brackets((qb) =>
+                    qb
+                        .where(`privacies.id = ${PUBLIC_ID}`)
+                        .orWhere("users.username = :username", { username: auth.username }),
+                ),
+            )
             .orderBy("watchedVideos.watchedAt", "DESC")
             .skip(offset)
             .take(limit)

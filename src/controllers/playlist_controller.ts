@@ -7,6 +7,7 @@ import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { Playlist } from "../entities/Playlist";
 import { PlaylistVideo } from "../entities/PlaylistVideo";
+import { PRIVATE_ID } from "../entities/Privacy";
 import { Video } from "../entities/Video";
 
 class PlaylistController {
@@ -129,13 +130,14 @@ class PlaylistController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getPlaylistVideos(req: Request, res: Response) {
-        const { playlist } = req.local;
+        const { playlist, auth } = req.local;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
         const playlistVideos = await getRepository(PlaylistVideo)
             .createQueryBuilder("playlist_videos")
             .innerJoinAndSelect("playlist_videos.video", "videos")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
             .where({ playlistId: playlist.id })
@@ -144,10 +146,23 @@ class PlaylistController {
             .take(limit)
             .getMany();
 
-        const videos = playlistVideos.map((playlistVideo) => ({
-            ...playlistVideo.video,
-            addedAt: playlistVideo.addedAt,
-        }));
+        const videos = playlistVideos
+            .map((playlistVideo) => ({
+                ...playlistVideo.video,
+                addedAt: playlistVideo.addedAt,
+            }))
+            .map((video) => {
+                // nullify if don't have permission
+                if (video.privacy.id === PRIVATE_ID) {
+                    if (!auth || video.uploadedBy.username !== auth.username) {
+                        return {
+                            id: video.id,
+                            uploadedBy: video.uploadedBy,
+                        };
+                    }
+                }
+                return video;
+            });
 
         res.status(200).json({
             data: videos,

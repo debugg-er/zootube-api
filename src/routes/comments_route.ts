@@ -20,6 +20,7 @@ router.get(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     commentController.getVideoComments,
 );
 
@@ -31,6 +32,7 @@ router.get(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,
@@ -46,6 +48,7 @@ router.post(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     commentController.postComment,
 );
 
@@ -57,6 +60,7 @@ router.post(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,
@@ -72,6 +76,7 @@ router.post(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,
@@ -99,6 +104,7 @@ router.patch(
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
     checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkVideoPrivacy,
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,

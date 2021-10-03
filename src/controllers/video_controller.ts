@@ -2,7 +2,7 @@ import * as FileType from "file-type";
 import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
-import { getRepository, In } from "typeorm";
+import { Brackets, getRepository, In } from "typeorm";
 
 import {
     isBinaryIfExist,
@@ -20,6 +20,7 @@ import { VideoLike } from "../entities/VideoLike";
 import { WatchedVideo } from "../entities/WatchedVideo";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
 import { VideoView } from "../entities/VideoView";
+import { PRIVATE, PRIVATE_ID, PUBLIC, PUBLIC_ID } from "../entities/Privacy";
 
 class VideoController {
     @asyncHandler
@@ -30,7 +31,7 @@ class VideoController {
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
         const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
         const early_response = req.body.early_response || "1";
-        const { title, description, categories } = req.body;
+        const { title, description, categories, privacy = PUBLIC } = req.body;
         const { video } = req.files;
 
         const videoType = await FileType.fromFile(video.path);
@@ -38,6 +39,10 @@ class VideoController {
 
         const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = ~~(await getVideoDuration(video.path));
+
+        if (privacy) {
+            expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
+        }
 
         if (thumbnail_timestamp) {
             expect(
@@ -69,6 +74,7 @@ class VideoController {
             views: 0,
             uploadedAt: uploadedAt,
             uploadedBy: { id: req.local.auth.id },
+            privacy: { id: privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID },
         });
 
         if (categories) {
@@ -90,10 +96,11 @@ class VideoController {
     @asyncHandler
     public async getVideo(req: Request, res: Response) {
         const { video_id } = req.params;
+        const { auth } = req.local;
 
         const videoRepository = getRepository(Video);
 
-        const video = await videoRepository
+        let videoQueryBuilder = videoRepository
             .createQueryBuilder("videos")
             .addSelect("videos.videoPath")
             .leftJoinAndSelect("videos.categories", "categories")
@@ -106,20 +113,25 @@ class VideoController {
                 qb.andWhere("a.like = false"),
             )
             .loadRelationCountAndMap("videos.totalComments", "videos.comments")
-            .addSelect(
+            .where({ id: video_id });
+
+        if (auth) {
+            videoQueryBuilder.addSelect(
                 (qb) =>
                     qb
                         .select("vl.like", "react")
                         .from(VideoLike, "vl")
                         .where("vl.video_id = :videoId AND vl.user_id = :userId", {
                             videoId: video_id,
-                            userId: req.local.auth?.id,
+                            userId: auth.id,
                         }),
                 "videos_react",
-            )
-            .where({ id: video_id })
-            .getOne();
+            );
+        } else {
+            videoQueryBuilder.addSelect("NULL", "videos_react");
+        }
 
+        const video = await videoQueryBuilder.getOne();
         res.status(200).json({
             data: video,
         });
@@ -166,25 +178,37 @@ class VideoController {
         const limit = +req.query.limit || 30;
         const category = req.query.category as string;
         const sort = req.query.sort || "hot";
+        const { auth } = req.local;
 
         expect(sort, "400:invalid sort option").to.be.oneOf(["newest", "view_rate", "hot"]);
 
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .innerJoin("videos.uploadedBy", "users")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .leftJoinAndSelect("videos.categories", "categories")
             .where("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
+            .andWhere(
+                new Brackets((qb) => {
+                    qb.where(`privacies.id = ${PUBLIC_ID}`);
+                    if (auth) {
+                        qb.orWhere("users.id = :userId", { userId: auth.id });
+                    }
+                }),
+            )
             .skip(offset)
             .take(limit);
 
+        // category filter
         if (category) {
-            videoQueryBuilder = videoQueryBuilder.where("categories.category = :category", {
+            videoQueryBuilder = videoQueryBuilder.andWhere("categories.category = :category", {
                 category: category,
             });
         }
 
+        // sort
         if (sort === "newest") {
             videoQueryBuilder = videoQueryBuilder.orderBy("videos.uploadedAt", "DESC");
         } else if (sort === "view_rate") {
@@ -267,6 +291,7 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin(
                 (subquery) => {
                     return subquery
@@ -279,6 +304,7 @@ class VideoController {
             )
             .where("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
+            .andWhere(`privacies.id = ${PUBLIC_ID}`)
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -293,10 +319,13 @@ class VideoController {
     @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
     @mustMatchIfExist("body.categories", listRegex)
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
-        const { title, description, categories } = req.body;
+        const { title, description, categories, privacy } = req.body;
         const { thumbnail } = req.files;
         const { video } = req.local;
 
+        if (privacy) {
+            expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
+        }
         if (thumbnail) {
             const thumbnailType = await FileType.fromFile(thumbnail.path);
             expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
@@ -309,6 +338,10 @@ class VideoController {
             video.categories = await getRepository(Category).find({
                 where: { category: In(categories.split(",")) },
             });
+        }
+        if (privacy) {
+            video.privacy.id = privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID;
+            video.privacy.name = privacy;
         }
 
         video.validate();
@@ -347,6 +380,7 @@ class VideoController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getLikedVideos(req: Request, res: Response) {
+        const { auth } = req.local;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
@@ -355,11 +389,19 @@ class VideoController {
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.videoLikes", "video_likes")
             .innerJoin("videos.uploadedBy", "users")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("video_likes.like = :isLiked", { isLiked: true })
-            .andWhere("video_likes.user_id = :userId", { userId: req.local.auth.id })
+            .andWhere("video_likes.user_id = :userId", { userId: auth.id })
             .andWhere("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
+            .andWhere(
+                new Brackets((qb) =>
+                    qb
+                        .where(`privacies.id = ${PUBLIC_ID}`)
+                        .orWhere("users.username = :username", { username: auth.username }),
+                ),
+            )
             .skip(offset)
             .take(limit)
             .getMany();
@@ -374,6 +416,7 @@ class VideoController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getRelateVideos(req: Request, res: Response) {
+        const { auth } = req.local;
         const { video_id } = req.params;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
@@ -389,10 +432,19 @@ class VideoController {
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("videos.id <> :videoId", { videoId: video_id })
             .andWhere("videos.isBlocked IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
+            .andWhere(
+                new Brackets((qb) => {
+                    qb.where(`privacies.id = ${PUBLIC_ID}`);
+                    if (auth) {
+                        qb.orWhere("users.id = :userId", { userId: auth.id });
+                    }
+                }),
+            )
             .skip(offset)
             .take(limit)
             .orderBy("videos.uploadedAt", "DESC");

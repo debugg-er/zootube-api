@@ -20,6 +20,7 @@ import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
 import { VideoView } from "./VideoView";
+import { Privacy } from "./Privacy";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -77,6 +78,10 @@ export class Video {
 
     @OneToMany(() => VideoView, (videoViews) => videoViews.video)
     videoViews: VideoView[];
+
+    @ManyToOne(() => Privacy, (privacies) => privacies.videos)
+    @JoinColumn([{ name: "privacy_id", referencedColumnName: "id" }])
+    privacy: Privacy;
 
     // --- virtual columns
     @VirtualColumn("integer")

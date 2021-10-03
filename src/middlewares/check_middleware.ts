@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 
 import { ADMIN } from "../entities/Role";
 import asyncHander from "../decorators/async_handler";
+import { PRIVATE_ID, PUBLIC_ID } from "../entities/Privacy";
 
 class CheckMiddleware {
     @asyncHander
@@ -85,6 +86,17 @@ class CheckMiddleware {
     public async checkPlaylistOwnerIsNotBlocked(req: Request, res: Response, next: NextFunction) {
         expect(req.local.playlist.createdBy.isBlocked, "405:playlist owner was blocked").to.be
             .false;
+        next();
+    }
+
+    @asyncHander
+    public async checkVideoPrivacy(req: Request, res: Response, next: NextFunction) {
+        const { video, auth } = req.local;
+        expect(
+            (video.privacy.id === PRIVATE_ID && auth && video.uploadedBy.id === auth.id) ||
+                video.privacy.id === PUBLIC_ID,
+            "403:permission denied",
+        ).to.be.true;
         next();
     }
 }

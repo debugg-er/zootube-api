@@ -12,6 +12,7 @@ import { Video } from "../entities/Video";
 import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
 import { Playlist } from "../entities/Playlist";
+import { PUBLIC_ID } from "../entities/Privacy";
 
 class UserController {
     @asyncHandler
@@ -111,10 +112,12 @@ class UserController {
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where({ uploadedBy: user })
             .andWhere("videos.isBlocked IS FALSE")
+            .andWhere(`privacies.id = ${PUBLIC_ID}`)
             .orderBy("videos.uploadedAt", "DESC")
             .skip(offset)
             .take(limit);

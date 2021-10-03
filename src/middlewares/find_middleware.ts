@@ -16,6 +16,7 @@ class FindMiddleware {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.id", "users.username", "users.isBlocked"])
             .innerJoinAndSelect("users.role", "roles")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .where("videos.id = :videoId", { videoId: req.params.video_id })
             .getOne();
 
