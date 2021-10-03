@@ -12,7 +12,7 @@ export class Role {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 
-    @Column("integer", { name: "name" })
+    @Column("character varying", { name: "name" })
     name: string;
 
     @OneToMany(() => User, (users) => users.role)
