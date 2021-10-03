@@ -32,6 +32,8 @@ class SearchController {
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("LOWER(title) LIKE :q", { q: `%${q.toLowerCase()}%` })
+            .andWhere("videos.isBlocked IS FALSE")
+            .andWhere("users.isBlocked IS FALSE")
             .andWhere(
                 new Brackets((qb) => {
                     qb.where(`privacies.id = ${PUBLIC_ID}`);
@@ -91,10 +93,18 @@ class SearchController {
 
         let users = await getRepository(User)
             .createQueryBuilder("users")
-            .loadRelationCountAndMap("users.subscribers", "users.subscribers")
+            .loadRelationCountAndMap("users.subscribers", "users.subscriptions")
             .select(["users.firstName", "users.lastName", "users.username", "users.iconPath"])
-            .where("LOWER(username) LIKE :q", { q: wildcardQuery })
-            .orWhere("LOWER(CONCAT(first_name, ' ', last_name)) LIKE :q", { q: wildcardQuery })
+            .where("users.isBlocked IS FALSE")
+            .andWhere(
+                new Brackets((qb) =>
+                    qb
+                        .where("LOWER(username) LIKE :q", { q: wildcardQuery })
+                        .orWhere("LOWER(CONCAT(first_name, ' ', last_name)) LIKE :q", {
+                            q: wildcardQuery,
+                        }),
+                ),
+            )
             .skip(offset)
             .take(limit)
             .getMany();

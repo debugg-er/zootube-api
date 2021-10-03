@@ -93,6 +93,7 @@ class CommentController {
             )
             .where("comments.video_id = :videoId", { videoId: video_id })
             .andWhere("comments.parent_id IS NULL")
+            .andWhere("users.isBlocked IS FALSE")
             .orderBy("comments.createdAt", "DESC")
             .skip(offset)
             .take(limit)
@@ -133,6 +134,8 @@ class CommentController {
                 "comments_react",
             )
             .where("comments.parent_id = :parentId", { parentId: comment_id })
+            .andWhere("users.isBlocked IS FALSE")
+            // it would be better if check the parent comment owner is blocked or not
             .orderBy("comments.createdAt", "DESC")
             .skip(offset)
             .take(limit)

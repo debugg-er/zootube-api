@@ -118,6 +118,7 @@ class PlaylistController {
             .innerJoin("playlists.createdBy", "users")
             .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
             .where({ id: playlist.id })
+            .andWhere("users.isBlocked IS FALSE")
             .getOne();
 
         res.status(200).json({
@@ -137,9 +138,16 @@ class PlaylistController {
         const playlistVideos = await getRepository(PlaylistVideo)
             .createQueryBuilder("playlist_videos")
             .innerJoinAndSelect("playlist_videos.video", "videos")
+            .addSelect("videos.isBlocked")
             .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
+            .addSelect([
+                "users.iconPath",
+                "users.username",
+                "users.firstName",
+                "users.lastName",
+                "users.isBlocked",
+            ])
             .where({ playlistId: playlist.id })
             .orderBy("playlist_videos.addedAt", "DESC")
             .skip(offset)
@@ -153,14 +161,26 @@ class PlaylistController {
             }))
             .map((video) => {
                 // nullify if don't have permission
-                if (video.privacy.id === PRIVATE_ID) {
-                    if (!auth || video.uploadedBy.username !== auth.username) {
-                        return {
-                            id: video.id,
-                            uploadedBy: video.uploadedBy,
-                        };
-                    }
+                if (
+                    video.privacy.id === PRIVATE_ID &&
+                    (!auth || video.uploadedBy.username !== auth.username)
+                ) {
+                    return {
+                        id: video.id,
+                        addedAt: video.addedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
                 }
+                // nullify if (video | video owner) was blocked
+                if (video.uploadedBy.isBlocked || video.isBlocked) {
+                    return {
+                        id: video.id,
+                        addedAt: video.addedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                delete video.isBlocked;
+                delete video.uploadedBy.isBlocked;
                 return video;
             });
 
