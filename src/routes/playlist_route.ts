@@ -12,6 +12,9 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+// get playlists
+router.get("/", playlistController.getPlaylists);
+
 // get playlist
 router.get(
     "/:playlist_id(\\d+)",

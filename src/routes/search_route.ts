@@ -11,4 +11,7 @@ router.get("/videos", authController.authorizeIfGiven, searchController.searchVi
 // search users
 router.get("/users", searchController.searchUsers);
 
+// search playlists
+router.get("/playlists", searchController.searchPlaylists);
+
 export default router;

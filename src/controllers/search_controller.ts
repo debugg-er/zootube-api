@@ -7,6 +7,7 @@ import asyncHandler from "../decorators/async_handler";
 import { isDateFormatIfExist, isNumberIfExist, mustExist } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import { PUBLIC_ID } from "../entities/Privacy";
+import { Playlist } from "../entities/Playlist";
 
 class SearchController {
     @asyncHandler
@@ -111,6 +112,33 @@ class SearchController {
 
         res.status(200).json({
             data: users,
+        });
+    }
+
+    @asyncHandler
+    @mustExist("query.q")
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async searchPlaylists(req: Request, res: Response) {
+        const q = req.query.q as string;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        let playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .innerJoin("playlists.createdBy", "users")
+            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
+            .andWhere("users.isBlocked IS FALSE")
+            .where("LOWER(name) LIKE :q", { q: `%${q.toLowerCase()}%` })
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
         });
     }
 }

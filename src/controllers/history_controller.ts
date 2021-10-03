@@ -19,7 +19,8 @@ class HistoryController {
 
         const watchedHistories = await getRepository(WatchedVideo)
             .createQueryBuilder("watchedVideos")
-            .leftJoinAndSelect("watchedVideos.video", "videos")
+            .innerJoinAndSelect("watchedVideos.video", "videos")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])

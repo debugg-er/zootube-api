@@ -188,6 +188,30 @@ class PlaylistController {
             data: videos,
         });
     }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getPlaylists(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .innerJoin("playlists.createdBy", "users")
+            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
+            .andWhere("users.isBlocked IS FALSE")
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
+        });
+    }
 }
 
 export default new PlaylistController();
