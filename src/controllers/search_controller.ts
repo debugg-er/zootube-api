@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
-import { getRepository } from "typeorm";
+import { Brackets, getRepository } from "typeorm";
 
 import { Video } from "../entities/Video";
 import { User } from "../entities/User";
 import asyncHandler from "../decorators/async_handler";
 import { isDateFormatIfExist, isNumberIfExist, mustExist } from "../decorators/validate_decorators";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
+import { PUBLIC_ID } from "../entities/Privacy";
 
 class SearchController {
     @asyncHandler
@@ -15,6 +16,7 @@ class SearchController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async searchVideos(req: Request, res: Response) {
+        const { auth } = req.local;
         const q = req.query.q as string;
         const max_upload_date = req.query.max_upload_date as string;
         const min_duration = req.query.min_duration as string;
@@ -26,9 +28,18 @@ class SearchController {
         let videoQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .leftJoinAndSelect("videos.categories", "categories")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
             .where("LOWER(title) LIKE :q", { q: `%${q.toLowerCase()}%` })
+            .andWhere(
+                new Brackets((qb) => {
+                    qb.where(`privacies.id = ${PUBLIC_ID}`);
+                    if (auth) {
+                        qb.orWhere("users.id = :userId", { userId: auth.id });
+                    }
+                }),
+            )
             .skip(offset)
             .take(limit);
 

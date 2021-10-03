@@ -24,6 +24,7 @@ router.get(
 // get playlist videos
 router.get(
     "/:playlist_id(\\d+)/videos",
+    authController.authorizeIfGiven,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     checkMiddleware.checkPlaylistOwnerIsNotBlocked,
