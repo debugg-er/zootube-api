@@ -1,13 +1,15 @@
 import { Column, Entity, Index, JoinColumn, OneToOne } from "typeorm";
 import { User } from "./User";
 
+export const STREAM_KEY_LENGTH = 32;
+
 @Index("streams_pkey", ["id"], { unique: true })
 @Entity("streams", { schema: "public" })
 export class Stream {
     @Column("character", { primary: true, name: "id", length: 10 })
     id: string;
 
-    @Column("character", { name: "stream_key", length: 32, select: false })
+    @Column("character", { name: "stream_key", length: STREAM_KEY_LENGTH, select: false })
     streamKey: string;
 
     @Column("character varying", { name: "name", length: 128 })
