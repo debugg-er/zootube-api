@@ -7,6 +7,7 @@ import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist, mustExistOne } from "../decorators/validate_decorators";
 import { Playlist } from "../entities/Playlist";
 import { PlaylistVideo } from "../entities/PlaylistVideo";
+import { PRIVATE_ID } from "../entities/Privacy";
 import { Video } from "../entities/Video";
 
 class PlaylistController {
@@ -117,6 +118,7 @@ class PlaylistController {
             .innerJoin("playlists.createdBy", "users")
             .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
             .where({ id: playlist.id })
+            .andWhere("users.isBlocked IS FALSE")
             .getOne();
 
         res.status(200).json({
@@ -129,28 +131,85 @@ class PlaylistController {
     @mustInRangeIfExist("query.offset", 0, Infinity)
     @mustInRangeIfExist("query.limit", 0, 100)
     public async getPlaylistVideos(req: Request, res: Response) {
-        const { playlist } = req.local;
+        const { playlist, auth } = req.local;
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
         const playlistVideos = await getRepository(PlaylistVideo)
             .createQueryBuilder("playlist_videos")
             .innerJoinAndSelect("playlist_videos.video", "videos")
+            .addSelect("videos.isBlocked")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .innerJoin("videos.uploadedBy", "users")
-            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
+            .addSelect([
+                "users.iconPath",
+                "users.username",
+                "users.firstName",
+                "users.lastName",
+                "users.isBlocked",
+            ])
             .where({ playlistId: playlist.id })
             .orderBy("playlist_videos.addedAt", "DESC")
             .skip(offset)
             .take(limit)
             .getMany();
 
-        const videos = playlistVideos.map((playlistVideo) => ({
-            ...playlistVideo.video,
-            addedAt: playlistVideo.addedAt,
-        }));
+        const videos = playlistVideos
+            .map((playlistVideo) => ({
+                ...playlistVideo.video,
+                addedAt: playlistVideo.addedAt,
+            }))
+            .map((video) => {
+                // nullify if don't have permission
+                if (
+                    video.privacy.id === PRIVATE_ID &&
+                    (!auth || video.uploadedBy.username !== auth.username)
+                ) {
+                    return {
+                        id: video.id,
+                        addedAt: video.addedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                // nullify if (video | video owner) was blocked
+                if (video.uploadedBy.isBlocked || video.isBlocked) {
+                    return {
+                        id: video.id,
+                        addedAt: video.addedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                delete video.isBlocked;
+                delete video.uploadedBy.isBlocked;
+                return video;
+            });
 
         res.status(200).json({
             data: videos,
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getPlaylists(req: Request, res: Response) {
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const playlists = await getRepository(Playlist)
+            .createQueryBuilder("playlists")
+            .loadRelationCountAndMap("playlists.totalVideos", "playlists.playlistVideos")
+            .innerJoin("playlists.createdBy", "users")
+            .addSelect(["users.iconPath", "users.username", "users.firstName", "users.lastName"])
+            .andWhere("users.isBlocked IS FALSE")
+            .orderBy("playlists.createdAt", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany();
+
+        res.status(200).json({
+            data: playlists,
         });
     }
 }
