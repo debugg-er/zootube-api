@@ -1,4 +1,5 @@
-import { Column, Entity, Index, JoinColumn, OneToOne } from "typeorm";
+import { Column, Entity, getRepository, Index, JoinColumn, OneToOne } from "typeorm";
+import { randomString } from "../utils/string_function";
 import { User } from "./User";
 
 export const STREAM_KEY_LENGTH = 32;
@@ -27,4 +28,13 @@ export class Stream {
     @OneToOne(() => User, (users) => users.stream)
     @JoinColumn([{ name: "user_id", referencedColumnName: "id" }])
     user: User;
+
+    static async generateId(): Promise<string> {
+        let id;
+        do {
+            id = randomString(10);
+        } while ((await getRepository(this).count({ id })) === 1);
+
+        return id;
+    }
 }

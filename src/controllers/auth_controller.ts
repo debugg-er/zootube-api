@@ -1,11 +1,13 @@
 import { expect } from "chai";
 import { NextFunction, Request, Response } from "express";
-import { getRepository } from "typeorm";
+import { getManager, getRepository } from "typeorm";
 import { jwtRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isBinary, mustExist } from "../decorators/validate_decorators";
 import { USER_ID } from "../entities/Role";
+import { Stream, STREAM_KEY_LENGTH } from "../entities/Stream";
 import { User } from "../entities/User";
+import { randomString } from "../utils/string_function";
 
 class AuthController {
     @asyncHandler
@@ -15,27 +17,35 @@ class AuthController {
         const { username, password, first_name, last_name } = req.body;
         const female: boolean = req.body.female === "1";
 
-        const userRepository = getRepository(User);
-
-        const countUsername: number = await userRepository.count({ username });
+        const countUsername: number = await getRepository(User).count({ username });
         expect(countUsername, "400:username already exists").to.equal(0);
 
-        const newUser = userRepository.create({
-            username: username,
-            password: password,
-            firstName: first_name,
-            lastName: last_name,
-            female: female,
-            isBlocked: false,
-            role: { id: USER_ID },
-        });
+        await getManager().transaction(async (entityManager) => {
+            const newUser = getRepository(User).create({
+                username: username,
+                password: password,
+                firstName: first_name,
+                lastName: last_name,
+                female: female,
+                isBlocked: false,
+                role: { id: USER_ID },
+            });
+            await entityManager.insert(User, newUser);
 
-        await userRepository.insert(newUser);
+            const userStream = getRepository(Stream).create({
+                id: await Stream.generateId(),
+                streamKey: randomString(STREAM_KEY_LENGTH),
+                name: newUser.username + " Stream!",
+                isStreaming: false,
+                user: { id: newUser.id },
+            });
+            await entityManager.insert(Stream, userStream);
 
-        res.status(201).json({
-            data: {
-                token: await newUser.signJWT(),
-            },
+            res.status(201).json({
+                data: {
+                    token: await newUser.signJWT(),
+                },
+            });
         });
     }
 
