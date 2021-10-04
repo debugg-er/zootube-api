@@ -1,20 +1,11 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository } from "typeorm";
-import * as FileType from "file-type";
 
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
-import {
-    isBinaryIfExist,
-    isNumberIfExist,
-    mustExist,
-    mustExistOne,
-} from "../decorators/validate_decorators";
-import { Stream, STREAM_KEY_LENGTH } from "../entities/Stream";
-import mediaService from "../services/media_service";
-import extractFilenameFromPath from "../utils/extract_filename_from_path";
-import { randomString } from "../utils/string_function";
+import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
+import { Stream } from "../entities/Stream";
 
 class StreamController {
     @asyncHandler
@@ -55,68 +46,6 @@ class StreamController {
         res.status(200).json({
             data: stream,
         });
-    }
-
-    @asyncHandler
-    public async getOwnStream(req: Request, res: Response) {
-        const { auth } = req.local;
-
-        const stream = await getRepository(Stream)
-            .createQueryBuilder("streams")
-            .addSelect("streams.streamKey")
-            .innerJoin("streams.user", "users")
-            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where("users.id = :userId", { userId: auth.id })
-            .getOne();
-
-        expect(stream, "404:stream not found").to.exist;
-
-        res.status(200).json({
-            data: stream,
-        });
-    }
-
-    @asyncHandler
-    @mustExistOne("body.name", "files.thumbnail", "renew_key")
-    @isBinaryIfExist("body.renew_key")
-    public async updateStreamInfo(req: Request, res: Response, next: NextFunction) {
-        const { auth } = req.local;
-        const { thumbnail } = req.files;
-        const { name } = req.body;
-        const renew_key = req.body.renew_key === "1";
-
-        if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
-        }
-
-        const stream = await getRepository(Stream)
-            .createQueryBuilder("streams")
-            .addSelect("streams.streamKey")
-            .innerJoin("streams.user", "users")
-            .where("users.id = :userId", { userId: auth.id })
-            .getOne();
-
-        if (renew_key) {
-            stream.streamKey = randomString(STREAM_KEY_LENGTH);
-        }
-        if (name) {
-            stream.name = name;
-        }
-        if (thumbnail) {
-            const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
-            if (stream.thumbnailPath !== null) {
-                await mediaService.deleteThumbnail(extractFilenameFromPath(stream.thumbnailPath));
-            }
-            stream.thumbnailPath = thumbnailPath;
-        }
-
-        await getRepository(Stream).save(stream);
-
-        res.status(200).json({
-            data: stream,
-        });
-        next();
     }
 
     @asyncHandler
