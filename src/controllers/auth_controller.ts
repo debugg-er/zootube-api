@@ -17,8 +17,12 @@ class AuthController {
         const { username, password, first_name, last_name } = req.body;
         const female: boolean = req.body.female === "1";
 
-        const countUsername: number = await getRepository(User).count({ username });
-        expect(countUsername, "400:username already exists").to.equal(0);
+        const user = await getRepository(User)
+            .createQueryBuilder("users")
+            .select("TRUE")
+            .where("LOWER(username) = :username", { username: username.toLowerCase() })
+            .getRawOne();
+        expect(user, "400:username already exists").to.not.exist;
 
         await getManager().transaction(async (entityManager) => {
             const newUser = getRepository(User).create({
@@ -56,14 +60,12 @@ class AuthController {
 
         const userRepository = getRepository(User);
 
-        const user = await userRepository.findOne(
-            { username: username },
-            // signJWT require these fields
-            {
-                relations: ["role"],
-                select: ["id", "username", "password", "isBlocked"],
-            },
-        );
+        const user = await userRepository
+            .createQueryBuilder("users")
+            .select(["users.id", "users.username", "users.password", "users.isBlocked"])
+            .innerJoinAndSelect("users.role", "roles")
+            .where("LOWER(username) = :username", { username: username.toLowerCase() })
+            .getOne();
 
         expect(user, "404:username doesn't exists").to.exist;
         expect(user.isBlocked, "405:user was blocked").to.be.false;
