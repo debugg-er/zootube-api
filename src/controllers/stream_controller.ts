@@ -66,6 +66,7 @@ class StreamController {
         expect(stream_key, "401:stream_key not match").to.equal(stream.streamKey);
 
         stream.isStreaming = status === "live";
+        if (status === "off") stream.lastStreamedAt = new Date();
         await getRepository(Stream).save(stream);
 
         res.status(200).json({

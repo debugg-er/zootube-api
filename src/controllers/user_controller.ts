@@ -423,12 +423,12 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.name", "files.thumbnail", "renew_key")
+    @mustExistOne("body.name", "files.thumbnail", "body.renew_key", "body.description")
     @isBinaryIfExist("body.renew_key")
     public async updateStreamInfo(req: Request, res: Response, next: NextFunction) {
         const { auth } = req.local;
         const { thumbnail } = req.files;
-        const { name } = req.body;
+        const { name, description } = req.body;
         const renew_key = req.body.renew_key === "1";
 
         if (thumbnail) {
@@ -443,12 +443,10 @@ class UserController {
             .where("users.id = :userId", { userId: auth.id })
             .getOne();
 
-        if (renew_key) {
-            stream.streamKey = randomString(STREAM_KEY_LENGTH);
-        }
-        if (name) {
-            stream.name = name;
-        }
+        if (renew_key) stream.streamKey = randomString(STREAM_KEY_LENGTH);
+        if (name) stream.name = name;
+        if (description) stream.description = description;
+
         if (thumbnail) {
             const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
             if (stream.thumbnailPath !== null) {
