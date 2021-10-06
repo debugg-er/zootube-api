@@ -19,6 +19,12 @@ export class Stream {
     @Column("character varying", { name: "thumbnail_path", length: 128 })
     thumbnailPath: string | null;
 
+    @Column("character varying", { name: "description", length: 5000 })
+    description: string | null;
+
+    @Column("timestamp without time zone", { name: "last_streamed_at" })
+    lastStreamedAt: Date | null;
+
     @Column("boolean", { name: "is_streaming", default: false })
     isStreaming: boolean;
 
