@@ -103,6 +103,7 @@ class VideoController {
         let videoQueryBuilder = videoRepository
             .createQueryBuilder("videos")
             .addSelect("videos.videoPath")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])

@@ -79,6 +79,7 @@ class UserController {
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .addSelect("videos.isBlocked")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])

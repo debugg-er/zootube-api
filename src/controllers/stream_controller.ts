@@ -64,6 +64,11 @@ class StreamController {
 
         expect(stream, "404:stream not found").to.exist;
         expect(stream_key, "401:stream_key not match").to.equal(stream.streamKey);
+        if (status === "live") {
+            expect(stream.isStreaming, "400:stream has been started").to.be.false;
+        } else if (status === "off") {
+            expect(stream.isStreaming, "400:stream has been ended").to.be.true;
+        }
 
         stream.isStreaming = status === "live";
         if (status === "off") stream.lastStreamedAt = new Date();
