@@ -385,27 +385,49 @@ class VideoController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const videos = await getRepository(Video)
-            .createQueryBuilder("videos")
+        const videoLikes = await getRepository(VideoLike)
+            .createQueryBuilder("video_likes")
+            .innerJoinAndSelect("video_likes.video", "videos")
             .leftJoinAndSelect("videos.categories", "categories")
-            .innerJoin("videos.videoLikes", "video_likes")
-            .innerJoin("videos.uploadedBy", "users")
             .innerJoinAndSelect("videos.privacy", "privacies")
+            .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where("video_likes.like = :isLiked", { isLiked: true })
+            .where("video_likes.like IS TRUE")
             .andWhere("video_likes.user_id = :userId", { userId: auth.id })
-            .andWhere("videos.isBlocked IS FALSE")
-            .andWhere("users.isBlocked IS FALSE")
-            .andWhere(
-                new Brackets((qb) =>
-                    qb
-                        .where(`privacies.id = ${PUBLIC_ID}`)
-                        .orWhere("users.username = :username", { username: auth.username }),
-                ),
-            )
             .skip(offset)
             .take(limit)
+            .orderBy("video_likes.reactedAt", "DESC")
             .getMany();
+
+        const videos = videoLikes
+            .map((videoLike) => ({
+                ...videoLike.video,
+                reactedAt: videoLike.reactedAt,
+            }))
+            .map((video) => {
+                // nullify if don't have permission
+                if (
+                    video.privacy.id === PRIVATE_ID &&
+                    (!auth || video.uploadedBy.username !== auth.username)
+                ) {
+                    return {
+                        id: video.id,
+                        reactedAt: video.reactedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                // nullify if (video | video owner) was blocked
+                if (video.uploadedBy.isBlocked || video.isBlocked) {
+                    return {
+                        id: video.id,
+                        reactedAt: video.reactedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                delete video.isBlocked;
+                delete video.uploadedBy.isBlocked;
+                return video;
+            });
 
         res.status(200).json({
             data: videos,
