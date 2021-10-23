@@ -13,26 +13,46 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 // get own profile
-router.get("/profile", authController.authorize, userController.getOwnProfile);
+router.get("/me/profile", authController.authorize, userController.getOwnProfile);
 
 // get own videos
-router.get("/videos", authController.authorize, userController.getOwnVideos);
+router.get("/me/videos", authController.authorize, userController.getOwnVideos);
 
 // get own playlist
-router.get("/playlists", authController.authorize, userController.getOwnPlaylists);
+router.get("/me/playlists", authController.authorize, userController.getOwnPlaylists);
 
 // get own subscription users
-router.get("/subscriptions", authController.authorize, userController.getOwnSubscriptions);
+router.get("/me/subscriptions", authController.authorize, userController.getOwnSubscriptions);
 
 // get own subscriber
-router.get("/subscribers", authController.authorize, userController.getOwnSubscribers);
+router.get("/me/subscribers", authController.authorize, userController.getOwnSubscribers);
+
+// get authorized user stream
+router.get("/me/stream", authController.authorize, userController.getOwnStream);
+
+// update authorized user stream
+router.patch(
+    "/me/stream",
+    authController.authorize,
+    multipartMiddleware.storeUploadFiles("thumbnail"),
+    userController.updateStreamInfo,
+);
 
 // update user
 router.patch(
-    "/",
+    "/me",
     authController.authorize,
     multipartMiddleware.storeUploadFiles("avatar", "banner"),
     userController.updateProfile,
+);
+
+// get user stream
+router.get(
+    "/:username/stream",
+    findMiddleware.findUser,
+    checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
+    userController.getUserStream,
 );
 
 // get user videos

@@ -1,11 +1,13 @@
 import { expect } from "chai";
 import { NextFunction, Request, Response } from "express";
-import { getRepository } from "typeorm";
+import { getManager, getRepository } from "typeorm";
 import { jwtRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isBinary, mustExist } from "../decorators/validate_decorators";
 import { USER_ID } from "../entities/Role";
+import { Stream, STREAM_KEY_LENGTH } from "../entities/Stream";
 import { User } from "../entities/User";
+import { randomString } from "../utils/string_function";
 
 class AuthController {
     @asyncHandler
@@ -15,27 +17,39 @@ class AuthController {
         const { username, password, first_name, last_name } = req.body;
         const female: boolean = req.body.female === "1";
 
-        const userRepository = getRepository(User);
+        const user = await getRepository(User)
+            .createQueryBuilder("users")
+            .select("TRUE")
+            .where("LOWER(username) = :username", { username: username.toLowerCase() })
+            .getRawOne();
+        expect(user, "400:username already exists").to.not.exist;
 
-        const countUsername: number = await userRepository.count({ username });
-        expect(countUsername, "400:username already exists").to.equal(0);
+        await getManager().transaction(async (entityManager) => {
+            const newUser = getRepository(User).create({
+                username: username,
+                password: password,
+                firstName: first_name,
+                lastName: last_name,
+                female: female,
+                isBlocked: false,
+                role: { id: USER_ID },
+            });
+            await entityManager.insert(User, newUser);
 
-        const newUser = userRepository.create({
-            username: username,
-            password: password,
-            firstName: first_name,
-            lastName: last_name,
-            female: female,
-            isBlocked: false,
-            role: { id: USER_ID },
-        });
+            const userStream = getRepository(Stream).create({
+                id: await Stream.generateId(),
+                streamKey: randomString(STREAM_KEY_LENGTH),
+                name: newUser.username + " Stream!",
+                isStreaming: false,
+                user: { id: newUser.id },
+            });
+            await entityManager.insert(Stream, userStream);
 
-        await userRepository.insert(newUser);
-
-        res.status(201).json({
-            data: {
-                token: await newUser.signJWT(),
-            },
+            res.status(201).json({
+                data: {
+                    token: await newUser.signJWT(),
+                },
+            });
         });
     }
 
@@ -46,14 +60,12 @@ class AuthController {
 
         const userRepository = getRepository(User);
 
-        const user = await userRepository.findOne(
-            { username: username },
-            // signJWT require these fields
-            {
-                relations: ["role"],
-                select: ["id", "username", "password", "isBlocked"],
-            },
-        );
+        const user = await userRepository
+            .createQueryBuilder("users")
+            .select(["users.id", "users.username", "users.password", "users.isBlocked"])
+            .innerJoinAndSelect("users.role", "roles")
+            .where("LOWER(username) = :username", { username: username.toLowerCase() })
+            .getOne();
 
         expect(user, "404:username doesn't exists").to.exist;
         expect(user.isBlocked, "405:user was blocked").to.be.false;

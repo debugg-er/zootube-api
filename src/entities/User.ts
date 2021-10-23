@@ -8,6 +8,7 @@ import {
     JoinColumn,
     ManyToOne,
     OneToMany,
+    OneToOne,
     PrimaryGeneratedColumn,
 } from "typeorm";
 import * as bcrypt from "bcrypt";
@@ -25,7 +26,8 @@ import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 import { Role } from "./Role";
-import {Playlist} from "./Playlist";
+import { Playlist } from "./Playlist";
+import { Stream } from "./Stream";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -67,6 +69,10 @@ export class User {
     @ManyToOne(() => Role, (roles) => roles.users)
     @JoinColumn([{ name: "role_id", referencedColumnName: "id" }])
     role: Role;
+
+    @OneToOne(() => Stream, (streams) => streams.user)
+    @JoinColumn([{ name: "id", referencedColumnName: "userId" }])
+    stream: Stream;
 
     @OneToMany(() => CommentLike, (commentLikes) => commentLikes.user)
     commentLikes: CommentLike[];

@@ -47,6 +47,19 @@ class CheckMiddleware {
     }
 
     @asyncHander
+    public async checkAccessBlockedVideoPermission(
+        req: Request,
+        res: Response,
+        next: NextFunction,
+    ) {
+        const { auth, video } = req.local;
+        if (auth.id !== video.uploadedBy.id && auth.role !== ADMIN) {
+            expect(req.local.video.isBlocked, "405:permission denined").to.be.false;
+        }
+        next();
+    }
+
+    @asyncHander
     public async checkVideoOwnerIsNotBlocked(req: Request, res: Response, next: NextFunction) {
         expect(req.local.video.uploadedBy.isBlocked, "405:video owner was blocked").to.be.false;
         next();

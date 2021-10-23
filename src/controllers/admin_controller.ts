@@ -90,6 +90,7 @@ class AdminController {
         if (status === "banned") {
             videos = await getRepository(Video)
                 .createQueryBuilder("videos")
+                .innerJoinAndSelect("videos.privacy", "privacies")
                 .innerJoin("videos.uploadedBy", "users")
                 .addSelect([
                     "users.username",

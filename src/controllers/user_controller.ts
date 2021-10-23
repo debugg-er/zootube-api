@@ -13,6 +13,8 @@ import { User } from "../entities/User";
 import extractFilenameFromPath from "../utils/extract_filename_from_path";
 import { Playlist } from "../entities/Playlist";
 import { PUBLIC_ID } from "../entities/Privacy";
+import { Stream, STREAM_KEY_LENGTH } from "../entities/Stream";
+import { randomString } from "../utils/string_function";
 
 class UserController {
     @asyncHandler
@@ -77,6 +79,7 @@ class UserController {
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .addSelect("videos.isBlocked")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
@@ -379,6 +382,86 @@ class UserController {
         res.status(200).json({
             data: playlists,
         });
+    }
+
+    @asyncHandler
+    public async getUserStream(req: Request, res: Response) {
+        const { username } = req.params;
+
+        const stream = await getRepository(Stream)
+            .createQueryBuilder("streams")
+            .innerJoin("streams.user", "users")
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
+            .where("users.username = :username", { username: username })
+            .getOne();
+
+        // Doesn't need to check if exists
+        // expect(stream, "404:stream not found").to.exist;
+
+        res.status(200).json({
+            data: stream,
+        });
+    }
+
+    @asyncHandler
+    public async getOwnStream(req: Request, res: Response) {
+        const { auth } = req.local;
+
+        const stream = await getRepository(Stream)
+            .createQueryBuilder("streams")
+            .addSelect("streams.streamKey")
+            .innerJoin("streams.user", "users")
+            .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
+            .where("users.id = :userId", { userId: auth.id })
+            .getOne();
+
+        // Doesn't need to check if exists
+        // expect(stream, "404:stream not found").to.exist;
+
+        res.status(200).json({
+            data: stream,
+        });
+    }
+
+    @asyncHandler
+    @mustExistOne("body.name", "files.thumbnail", "body.renew_key", "body.description")
+    @isBinaryIfExist("body.renew_key")
+    public async updateStreamInfo(req: Request, res: Response, next: NextFunction) {
+        const { auth } = req.local;
+        const { thumbnail } = req.files;
+        const { name, description } = req.body;
+        const renew_key = req.body.renew_key === "1";
+
+        if (thumbnail) {
+            const thumbnailType = await FileType.fromFile(thumbnail.path);
+            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
+        }
+
+        const stream = await getRepository(Stream)
+            .createQueryBuilder("streams")
+            .addSelect("streams.streamKey")
+            .innerJoin("streams.user", "users")
+            .where("users.id = :userId", { userId: auth.id })
+            .getOne();
+
+        if (renew_key) stream.streamKey = randomString(STREAM_KEY_LENGTH);
+        if (name) stream.name = name;
+        if (description) stream.description = description;
+
+        if (thumbnail) {
+            const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
+            if (stream.thumbnailPath !== null) {
+                await mediaService.deleteThumbnail(extractFilenameFromPath(stream.thumbnailPath));
+            }
+            stream.thumbnailPath = thumbnailPath;
+        }
+
+        await getRepository(Stream).save(stream);
+
+        res.status(200).json({
+            data: stream,
+        });
+        next();
     }
 }
 
