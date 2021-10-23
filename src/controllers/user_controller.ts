@@ -444,6 +444,10 @@ class UserController {
             .where("users.id = :userId", { userId: auth.id })
             .getOne();
 
+        if (renew_key) {
+            expect(stream.isStreaming, "400:video is live streaming").to.be.false;
+        }
+
         if (renew_key) stream.streamKey = randomString(STREAM_KEY_LENGTH);
         if (name) stream.name = name;
         if (description) stream.description = description;
