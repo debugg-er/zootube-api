@@ -44,8 +44,7 @@ router.get(
     authController.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
-    checkMiddleware.checkVideoIsNotBlocked,
-    checkMiddleware.checkVideoOwnerIsNotBlocked,
+    checkMiddleware.checkAccessBlockedVideoPermission,
     checkMiddleware.checkVideoPrivacy,
     videoController.getVideo,
 );
