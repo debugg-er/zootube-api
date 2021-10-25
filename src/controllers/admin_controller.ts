@@ -1,9 +1,10 @@
 import { expect } from "chai";
 import { Request, Response } from "express";
-import { getRepository } from "typeorm";
+import { getManager, getRepository } from "typeorm";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
+import { Report } from "../entities/Report";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
 
@@ -16,13 +17,22 @@ class AdminController {
 
         expect(action, "400:invalid action").to.be.oneOf(["ban", "unban"]);
 
-        video.isBlocked = action === "ban";
-        await getRepository(Video).save(video);
+        await getManager().transaction(async (entityManager) => {
+            video.isBlocked = action === "ban";
+            await entityManager.save(Video, video);
+            if (action === "ban") {
+                await entityManager.update(
+                    Report,
+                    { video: { id: video.id } },
+                    { isResolved: true },
+                );
+            }
 
-        res.status(200).json({
-            data: {
-                message: "modify video success",
-            },
+            res.status(200).json({
+                data: {
+                    message: "modify video success",
+                },
+            });
         });
     }
 

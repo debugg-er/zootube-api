@@ -11,6 +11,9 @@ export class Report {
     @Column("character varying", { name: "reason", length: 2000 })
     reason: string;
 
+    @Column("boolean", { name: "is_resolved", default: false })
+    isResolved: boolean;
+
     @Column("timestamp with time zone", { name: "created_at", default: () => "CURRENT_TIMESTAMP" })
     createdAt: Date;
 

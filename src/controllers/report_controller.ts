@@ -3,7 +3,12 @@ import { Request, Response } from "express";
 import { getRepository } from "typeorm";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
-import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
+import {
+    isBinaryIfExist,
+    isNumberIfExist,
+    mustExist,
+    mustExistOne,
+} from "../decorators/validate_decorators";
 import { Report } from "../entities/Report";
 import { Video } from "../entities/Video";
 
@@ -51,7 +56,7 @@ class ReportController {
                 "reporters.lastName",
             ])
             .leftJoinAndSelect("videos.categories", "categories")
-            .where("videos.isBlocked IS FALSE")
+            .where("reports.isResolved IS FALSE")
             .andWhere("users.isBlocked IS FALSE")
             .skip(offset)
             .take(limit)
@@ -60,6 +65,26 @@ class ReportController {
 
         res.status(200).json({
             data: videos,
+        });
+    }
+
+    @asyncHandler
+    @mustExistOne("body.resolved")
+    @isBinaryIfExist("body.resolved")
+    public async modifyReport(req: Request, res: Response) {
+        const report_id = +req.params.report_id;
+        const resolved = req.body.resolved === "1";
+
+        const report = await getRepository(Report).findOne({ id: report_id });
+        expect(report, "404:report not found").to.exist;
+
+        if (resolved !== undefined) {
+            report.isResolved = resolved;
+        }
+
+        await getRepository(Report).save(report);
+        res.status(200).json({
+            data: report,
         });
     }
 }

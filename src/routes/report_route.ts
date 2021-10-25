@@ -15,10 +15,18 @@ router.post("/", authController.authorize, reportController.createVideoReport);
 
 // get reported video
 router.get(
-    "/",
+    "/videos",
     authController.authorize,
     checkMiddleware.checkAuthorizedUserIsAdmin,
     reportController.getReportedVideo,
+);
+
+// modify report
+router.patch(
+    "/:report_id(\\d+)",
+    authController.authorize,
+    checkMiddleware.checkAuthorizedUserIsAdmin,
+    reportController.modifyReport,
 );
 
 export default router;
