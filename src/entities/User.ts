@@ -28,6 +28,7 @@ import { IUserToken } from "../interfaces/user";
 import { Role } from "./Role";
 import { Playlist } from "./Playlist";
 import { Stream } from "./Stream";
+import { Report } from "./Report";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -79,6 +80,9 @@ export class User {
 
     @OneToMany(() => Comment, (comments) => comments.user)
     comments: Comment[];
+
+    @OneToMany(() => Report, (reports) => reports.user)
+    reports: Report[];
 
     @OneToMany(() => Subscription, (subscriptions) => subscriptions.subscriber)
     subscribers: Subscription[];
