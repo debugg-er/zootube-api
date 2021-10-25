@@ -12,6 +12,7 @@ import historyRoute from "../routes/history_route";
 import adminRoute from "../routes/admin_route";
 import playlistRoute from "../routes/playlist_route";
 import streamRoute from "../routes/stream_route";
+import reportRoute from "../routes/report_route";
 
 import cleanMiddleware from "../middlewares/clean_middleware";
 
@@ -38,6 +39,7 @@ app.use("/histories", historyRoute);
 app.use("/admin", adminRoute);
 app.use("/playlists", playlistRoute);
 app.use("/streams", streamRoute);
+app.use("/reports", reportRoute);
 
 app.use(cleanMiddleware.removeTempFiles);
 
