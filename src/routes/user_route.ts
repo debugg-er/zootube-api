@@ -91,6 +91,15 @@ router.get(
     userController.getUserProfile,
 );
 
+// get user statistic
+router.get(
+    "/:username/statistic",
+    findMiddleware.findUser,
+    checkMiddleware.checkUserExist,
+    checkMiddleware.checkUserIsNotBlocked,
+    userController.getUserStatistic,
+);
+
 // get user playlist
 router.get(
     "/:username/playlists",
