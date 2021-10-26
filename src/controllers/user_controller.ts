@@ -274,12 +274,13 @@ class UserController {
         "body.first_name",
         "body.last_name",
         "body.female",
+        "body.description",
         "files.avatar",
         "files.banner",
     )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
-        const { first_name, last_name, female } = req.body;
+        const { first_name, last_name, female, description } = req.body;
         const { avatar, banner } = req.files;
 
         if (avatar) {
@@ -296,6 +297,7 @@ class UserController {
 
         user.firstName = first_name || user.firstName;
         user.lastName = last_name || user.lastName;
+        user.description = description || user.description;
         if (female !== undefined) {
             user.female = female === "1";
         }

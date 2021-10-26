@@ -52,6 +52,13 @@ export class User {
     @Column("boolean", { name: "female" })
     female: boolean;
 
+    @Column("character varying", {
+        name: "description",
+        nullable: true,
+        length: 10000,
+    })
+    description: string | null;
+
     @Column("character varying", { name: "banner_path", length: 128 })
     bannerPath: string | null;
 
