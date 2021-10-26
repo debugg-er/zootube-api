@@ -52,17 +52,67 @@ class UserController {
             .where("user_id = :userId", { userId: user.id })
             .getRawOne();
 
-        const { totalViews } = await createQueryBuilder("videos")
-            .select('COALESCE(SUM(views), 0) AS "totalViews"')
-            .where("uploaded_by = :userId", { userId: user.id })
-            .getRawOne();
-
         res.status(200).json({
             data: {
                 ...user,
-                totalViews: +totalViews,
                 totalSubscribers: +totalSubscribers,
             },
+        });
+    }
+
+    @asyncHandler
+    public async getUserStatistic(req: Request, res: Response) {
+        const { user } = req.local;
+        delete user.isBlocked;
+
+        const queries = [
+            createQueryBuilder("subscriptions")
+                .select("COALESCE(COUNT(subscriber_id), 0)", "totalSubscribers")
+                .where("user_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("subscriptions")
+                .select("COALESCE(COUNT(user_id), 0)", "totalSubscriptions")
+                .where("subscriber_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("videos")
+                .select("COALESCE(SUM(views), 0)", "totalViews")
+                .addSelect("COALESCE(COUNT(id), 0)", "totalVideos")
+                .where("uploaded_by = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("comments")
+                .select("COALESCE(COUNT(id), 0)", "totalComments")
+                .where("user_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("videos", "v")
+                .innerJoin("video_likes", "vl", "v.id = vl.video_id")
+                .select('COALESCE(SUM(CASE WHEN "like" THEN 1 ELSE 0 END), 0)', "totalVideoLikes")
+                .addSelect(
+                    'COALESCE(SUM(CASE WHEN "like" THEN 0 ELSE 1 END), 0)',
+                    "totalVideoDislikes",
+                )
+                .where("uploaded_by = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("comments", "c")
+                .innerJoin("comment_likes", "cl", "c.id = cl.comment_id")
+                .select('COALESCE(SUM(CASE WHEN "like" THEN 1 ELSE 0 END), 0)', "totalCommentLikes")
+                .addSelect(
+                    'COALESCE(SUM(CASE WHEN "like" THEN 0 ELSE 1 END), 0)',
+                    "totalCommentDislikes",
+                )
+                .where("c.user_id = :userId", { userId: user.id })
+                .getRawOne(),
+        ];
+
+        let statistic = (await Promise.all(queries)).reduce((acc, cur) => ({ ...acc, ...cur }), {});
+        for (const key in statistic) statistic[key] = +statistic[key];
+
+        res.status(200).json({
+            data: statistic,
         });
     }
 
@@ -274,12 +324,13 @@ class UserController {
         "body.first_name",
         "body.last_name",
         "body.female",
+        "body.description",
         "files.avatar",
         "files.banner",
     )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
-        const { first_name, last_name, female } = req.body;
+        const { first_name, last_name, female, description } = req.body;
         const { avatar, banner } = req.files;
 
         if (avatar) {
@@ -296,6 +347,7 @@ class UserController {
 
         user.firstName = first_name || user.firstName;
         user.lastName = last_name || user.lastName;
+        user.description = description || user.description;
         if (female !== undefined) {
             user.female = female === "1";
         }
@@ -443,6 +495,10 @@ class UserController {
             .innerJoin("streams.user", "users")
             .where("users.id = :userId", { userId: auth.id })
             .getOne();
+
+        if (renew_key) {
+            expect(stream.isStreaming, "400:video is live streaming").to.be.false;
+        }
 
         if (renew_key) stream.streamKey = randomString(STREAM_KEY_LENGTH);
         if (name) stream.name = name;

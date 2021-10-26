@@ -21,6 +21,7 @@ import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
 import { VideoView } from "./VideoView";
 import { Privacy } from "./Privacy";
+import { Report } from "./Report";
 
 @Index("videos_pkey", ["id"], { unique: true })
 @Entity("videos", { schema: "public" })
@@ -65,6 +66,9 @@ export class Video {
 
     @OneToMany(() => Comment, (comments) => comments.video)
     comments: Comment[];
+
+    @OneToMany(() => Report, (reports) => reports.video)
+    reports: Report[];
 
     @ManyToMany(() => Category, (categories) => categories.videos)
     categories: Category[];

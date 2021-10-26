@@ -18,7 +18,6 @@ router.patch(
     checkMiddleware.checkAuthorizedUserIsAdmin,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
-    checkMiddleware.checkVideoOwnerIsNotAdmin,
     adminController.modifyVideo,
 );
 
@@ -29,7 +28,6 @@ router.patch(
     checkMiddleware.checkAuthorizedUserIsAdmin,
     findMiddleware.findUser,
     checkMiddleware.checkUserExist,
-    checkMiddleware.checkUserIsNotAdmin,
     adminController.modifyUser,
 );
 

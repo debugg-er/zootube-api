@@ -28,6 +28,7 @@ import { IUserToken } from "../interfaces/user";
 import { Role } from "./Role";
 import { Playlist } from "./Playlist";
 import { Stream } from "./Stream";
+import { Report } from "./Report";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -50,6 +51,13 @@ export class User {
 
     @Column("boolean", { name: "female" })
     female: boolean;
+
+    @Column("character varying", {
+        name: "description",
+        nullable: true,
+        length: 10000,
+    })
+    description: string | null;
 
     @Column("character varying", { name: "banner_path", length: 128 })
     bannerPath: string | null;
@@ -79,6 +87,9 @@ export class User {
 
     @OneToMany(() => Comment, (comments) => comments.user)
     comments: Comment[];
+
+    @OneToMany(() => Report, (reports) => reports.user)
+    reports: Report[];
 
     @OneToMany(() => Subscription, (subscriptions) => subscriptions.subscriber)
     subscribers: Subscription[];
