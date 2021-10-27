@@ -28,16 +28,10 @@ class UserController {
             .where("user_id = :userId", { userId: id })
             .getRawOne();
 
-        const { totalViews } = await createQueryBuilder("videos")
-            .select('COALESCE(SUM(views), 0) AS "totalViews"')
-            .where("uploaded_by = :userId", { userId: id })
-            .getRawOne();
-
         res.status(200).json({
             data: {
                 ...user,
-                totalViews: +totalViews,
-                totalSubscribers: +totalSubscribers,
+                totalSubscribers: totalSubscribers,
             },
         });
     }
@@ -55,7 +49,7 @@ class UserController {
         res.status(200).json({
             data: {
                 ...user,
-                totalSubscribers: +totalSubscribers,
+                totalSubscribers: totalSubscribers,
             },
         });
     }
@@ -109,7 +103,6 @@ class UserController {
         ];
 
         let statistic = (await Promise.all(queries)).reduce((acc, cur) => ({ ...acc, ...cur }), {});
-        for (const key in statistic) statistic[key] = +statistic[key];
 
         res.status(200).json({
             data: statistic,
