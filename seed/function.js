@@ -282,3 +282,41 @@ module.exports.createVideo = async function ({ publisher, users, videoPath, cate
         n: videoData.statistics.commentCount % users.length,
     });
 };
+
+module.exports.randomizeVideoReactedTimestamp = async function () {
+    const { rows: videos } = await query("SELECT * FROM videos");
+    for (const video of videos) {
+        await query(
+            `UPDATE video_likes SET
+            reacted_at = 
+                (select uploaded_at from videos where id = $1) +
+                random() * (
+                    CURRENT_DATE -
+                    (select uploaded_at from videos where id = $1)
+                )
+            WHERE video_id = $1
+        `,
+            [video.id],
+        );
+    }
+    console.log("-- randomizeVideoReactedTimestamp done");
+};
+
+module.exports.randomizeVideoCommentsTimestamp = async function () {
+    const { rows: videos } = await query("SELECT * FROM videos");
+    for (const video of videos) {
+        await query(
+            `UPDATE comments SET
+            created_at = 
+                (select uploaded_at from videos where id = $1) +
+                random() * (
+                    CURRENT_DATE -
+                    (select uploaded_at from videos where id = $1)
+                )
+            WHERE video_id = $1
+        `,
+            [video.id],
+        );
+    }
+    console.log("-- randomizeVideoReactedTimestamp done");
+};

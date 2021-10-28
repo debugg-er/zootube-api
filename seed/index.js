@@ -3,7 +3,14 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const _fs = require("fs");
 const { pool } = require("./db");
 const { promises: fs } = require("fs");
-const { createUser, createVideo, login, subscribe } = require("./function");
+const {
+    createUser,
+    createVideo,
+    login,
+    subscribe,
+    randomizeVideoReactedTimestamp,
+    randomizeVideoCommentsTimestamp,
+} = require("./function");
 const { checkPercentage, takeRandomEleInArray } = require("./util");
 
 if (!process.argv[3]) throw new Error("missing argument");
@@ -80,6 +87,8 @@ async function main() {
     await seedSubscribe(tokens.slice(0, 30), tokens.slice(30));
 
     await handleVideos(tokens.slice(0, 30), tokens);
+    await randomizeVideoReactedTimestamp();
+    await randomizeVideoCommentsTimestamp();
 }
 
 main().catch(console.log);
