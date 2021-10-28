@@ -95,7 +95,9 @@ class VideoController {
     }
 
     @asyncHandler
+    @isBinaryIfExist("query.increase_view")
     public async getVideo(req: Request, res: Response) {
+        const increase_view = req.query.increase_view === "1";
         const { video_id } = req.params;
         const { auth } = req.local;
 
@@ -138,7 +140,9 @@ class VideoController {
             data: video,
         });
 
-        await video.increaseView();
+        if (increase_view) {
+            await video.increaseView();
+        }
 
         // store history if user logged in
         if (req.local.auth) {
