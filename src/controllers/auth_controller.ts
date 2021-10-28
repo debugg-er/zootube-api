@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { NextFunction, Request, Response } from "express";
-import { getManager, getRepository } from "typeorm";
+import { getRepository } from "typeorm";
 import { jwtRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { isBinary, mustExist } from "../decorators/validate_decorators";
@@ -24,32 +24,30 @@ class AuthController {
             .getRawOne();
         expect(user, "400:username already exists").to.not.exist;
 
-        await getManager().transaction(async (entityManager) => {
-            const newUser = getRepository(User).create({
-                username: username,
-                password: password,
-                firstName: first_name,
-                lastName: last_name,
-                female: female,
-                isBlocked: false,
-                role: { id: USER_ID },
-            });
-            await entityManager.insert(User, newUser);
+        const newUser = getRepository(User).create({
+            username: username,
+            password: password,
+            firstName: first_name,
+            lastName: last_name,
+            female: female,
+            isBlocked: false,
+            role: { id: USER_ID },
+        });
+        await getRepository(User).insert(newUser);
 
-            const userStream = getRepository(Stream).create({
-                id: await Stream.generateId(),
-                streamKey: randomString(STREAM_KEY_LENGTH),
-                name: newUser.username + " Stream!",
-                isStreaming: false,
-                user: { id: newUser.id },
-            });
-            await entityManager.insert(Stream, userStream);
+        const userStream = getRepository(Stream).create({
+            id: await Stream.generateId(),
+            streamKey: randomString(STREAM_KEY_LENGTH),
+            name: newUser.username + " Stream!",
+            isStreaming: false,
+            user: { id: newUser.id },
+        });
+        await getRepository(Stream).insert(userStream);
 
-            res.status(201).json({
-                data: {
-                    token: await newUser.signJWT(),
-                },
-            });
+        res.status(201).json({
+            data: {
+                token: await newUser.signJWT(),
+            },
         });
     }
 
