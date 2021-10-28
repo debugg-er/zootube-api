@@ -61,7 +61,6 @@ async function handleVideos(publishers, users) {
         }
     }
     console.log("reach the end");
-    pool.end();
 }
 
 async function seedSubscribe(users, subscribers) {
@@ -89,6 +88,7 @@ async function main() {
     await handleVideos(tokens.slice(0, 30), tokens);
     await randomizeVideoReactedTimestamp();
     await randomizeVideoCommentsTimestamp();
+    pool.end();
 }
 
 main().catch(console.log);
