@@ -50,6 +50,16 @@ router.get(
     videoController.getVideo,
 );
 
+// get video analysis
+router.get(
+    "/:video_id(\\w{10})/analysis",
+    authController.authorizeIfGiven,
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    identifyMiddleware.isOwnVideo,
+    videoController.getVideoAnalysis,
+);
+
 // react video
 router.post(
     "/:video_id(\\w{10})/reaction",

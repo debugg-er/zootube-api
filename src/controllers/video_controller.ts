@@ -2,10 +2,11 @@ import * as FileType from "file-type";
 import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
-import { Brackets, getRepository, In } from "typeorm";
+import { Brackets, createQueryBuilder, getRepository, In } from "typeorm";
 
 import {
     isBinaryIfExist,
+    isDateFormatIfExist,
     isNumberIfExist,
     mustExist,
     mustExistOne,
@@ -94,7 +95,9 @@ class VideoController {
     }
 
     @asyncHandler
+    @isBinaryIfExist("query.is_watch")
     public async getVideo(req: Request, res: Response) {
+        const is_watch = req.query.is_watch === "1";
         const { video_id } = req.params;
         const { auth } = req.local;
 
@@ -136,9 +139,10 @@ class VideoController {
         res.status(200).json({
             data: video,
         });
+        if (!is_watch) return;
 
+        // increase view count
         await video.increaseView();
-
         // store history if user logged in
         if (req.local.auth) {
             const { id } = req.local.auth;
@@ -488,6 +492,74 @@ class VideoController {
         res.status(200).json({
             data: relateVideos,
         });
+    }
+
+    @asyncHandler
+    @isDateFormatIfExist("query.from")
+    public async getVideoAnalysis(req: Request, res: Response) {
+        const { video } = req.local;
+        const from = req.query.from as string;
+        const unit = req.query.unit || "day";
+
+        expect(unit, "400:invalid unit").to.be.oneOf(["day", "month", "year"]);
+
+        let dateFormat;
+        switch (unit) {
+            case "day":
+                dateFormat = "'YYYY-MM-DD'";
+                break;
+            case "month":
+                dateFormat = "'YYYY-MM'";
+                break;
+            case "year":
+                dateFormat = "'YYYY'";
+                break;
+        }
+
+        let viewsQueryBuilder = createQueryBuilder("video_views")
+            .select("SUM(views)", "views")
+            .addSelect(`TO_CHAR(date, ${dateFormat})`, "date")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(date, ${dateFormat})`)
+            .orderBy("date");
+
+        let commentsQueryBuilder = createQueryBuilder("comments")
+            .select("COUNT(id)", "comments")
+            .addSelect(`TO_CHAR(created_at, ${dateFormat})`, "date")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(created_at, ${dateFormat})`)
+            .orderBy("date");
+
+        let videoReactionsQueryBuilder = createQueryBuilder("video_likes")
+            .select(`TO_CHAR(reacted_at, ${dateFormat})`, "date")
+            .addSelect('SUM(CASE WHEN "like" THEN 1 ELSE 0 END)', "likes")
+            .addSelect('SUM(CASE WHEN "like" THEN 0 ELSE 1 END)', "dislikes")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(reacted_at, ${dateFormat})`)
+            .orderBy("date");
+
+        if (from) {
+            viewsQueryBuilder = viewsQueryBuilder.andWhere("date >= :from", {
+                from: new Date(from),
+            });
+            commentsQueryBuilder = commentsQueryBuilder.andWhere("created_at >= :from", {
+                from: new Date(from),
+            });
+            videoReactionsQueryBuilder = videoReactionsQueryBuilder.andWhere(
+                "reacted_at >= :from",
+                {
+                    from: new Date(from),
+                },
+            );
+        }
+
+        const data = {
+            comments: await commentsQueryBuilder.getRawMany(),
+            views: await viewsQueryBuilder.getRawMany(),
+            videoReactions: await videoReactionsQueryBuilder.getRawMany(),
+        };
+
+        res.status(200).json({ data: data });
     }
 }
 

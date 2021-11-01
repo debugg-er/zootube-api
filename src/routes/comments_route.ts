@@ -112,7 +112,7 @@ router.patch(
     commentController.updateComment,
 );
 
-// delete own comment
+// delete comment
 router.delete(
     "/:comment_id(\\d+)",
     authController.authorize,
@@ -121,7 +121,7 @@ router.delete(
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,
-    identifyMiddleware.isOwnComment,
+    identifyMiddleware.isOwnCommentOrOwnVideo,
     commentController.deleteComment,
 );
 
