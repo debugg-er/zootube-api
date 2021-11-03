@@ -1,8 +1,8 @@
 import * as express from "express";
 
-import authController from "../controllers/auth_controller";
 import playlistController from "../controllers/playlist_controller";
 
+import authMiddleware from "../middlewares/auth_middleware"
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 import identifyMiddleware from "../middlewares/identify_middleware";
@@ -27,7 +27,7 @@ router.get(
 // get playlist videos
 router.get(
     "/:playlist_id(\\d+)/videos",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     checkMiddleware.checkPlaylistOwnerIsNotBlocked,
@@ -35,12 +35,12 @@ router.get(
 );
 
 // create playlist
-router.post("/", authController.authorize, playlistController.createPlaylist);
+router.post("/", authMiddleware.authorize, playlistController.createPlaylist);
 
 // add video to playlists
 router.post(
     "/:playlist_id(\\d+)/videos",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     identifyMiddleware.isOwnPlaylist,
@@ -50,7 +50,7 @@ router.post(
 // update playlist
 router.patch(
     "/:playlist_id(\\d+)",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     identifyMiddleware.isOwnPlaylist,
@@ -60,7 +60,7 @@ router.patch(
 // delete playlist
 router.delete(
     "/:playlist_id(\\d+)",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     identifyMiddleware.isOwnPlaylist,
@@ -70,7 +70,7 @@ router.delete(
 // remove video from playlist
 router.delete(
     "/:playlist_id(\\d+)/videos",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findPlaylist,
     checkMiddleware.checkPlaylistExist,
     identifyMiddleware.isOwnPlaylist,

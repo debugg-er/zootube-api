@@ -1,14 +1,15 @@
 import * as express from "express";
 
 import historyController from "../controllers/history_controller";
-import authController from "../controllers/auth_controller";
+
+import authMiddleware from "../middlewares/auth_middleware"
 
 const router = express.Router();
 
 // get watched videos
-router.get("/", authController.authorize, historyController.getWatchedVideos);
+router.get("/", authMiddleware.authorize, historyController.getWatchedVideos);
 
 // clear watch history
-router.delete("/", authController.authorize, historyController.deleteWatchedVideos);
+router.delete("/", authMiddleware.authorize, historyController.deleteWatchedVideos);
 
 export default router;

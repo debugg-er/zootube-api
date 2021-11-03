@@ -1,8 +1,8 @@
 import * as express from "express";
 
-import authController from "../controllers/auth_controller";
 import userController from "../controllers/user_controller";
 
+import authMiddleware from "../middlewares/auth_middleware";
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 import multipartMiddleware from "../middlewares/multipart_middleware";
@@ -13,27 +13,27 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 // get own profile
-router.get("/me/profile", authController.authorize, userController.getOwnProfile);
+router.get("/me/profile", authMiddleware.authorize, userController.getOwnProfile);
 
 // get own videos
-router.get("/me/videos", authController.authorize, userController.getOwnVideos);
+router.get("/me/videos", authMiddleware.authorize, userController.getOwnVideos);
 
 // get own playlist
-router.get("/me/playlists", authController.authorize, userController.getOwnPlaylists);
+router.get("/me/playlists", authMiddleware.authorize, userController.getOwnPlaylists);
 
 // get own subscription users
-router.get("/me/subscriptions", authController.authorize, userController.getOwnSubscriptions);
+router.get("/me/subscriptions", authMiddleware.authorize, userController.getOwnSubscriptions);
 
 // get own subscriber
-router.get("/me/subscribers", authController.authorize, userController.getOwnSubscribers);
+router.get("/me/subscribers", authMiddleware.authorize, userController.getOwnSubscribers);
 
 // get authorized user stream
-router.get("/me/stream", authController.authorize, userController.getOwnStream);
+router.get("/me/stream", authMiddleware.authorize, userController.getOwnStream);
 
 // update authorized user stream
 router.patch(
     "/me/stream",
-    authController.authorize,
+    authMiddleware.authorize,
     multipartMiddleware.storeUploadFiles("thumbnail"),
     userController.updateStreamInfo,
 );
@@ -41,7 +41,7 @@ router.patch(
 // update user
 router.patch(
     "/me",
-    authController.authorize,
+    authMiddleware.authorize,
     multipartMiddleware.storeUploadFiles("avatar", "banner"),
     userController.updateProfile,
 );

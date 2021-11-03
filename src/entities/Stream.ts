@@ -22,7 +22,7 @@ export class Stream {
     @Column("character varying", { name: "description", length: 5000 })
     description: string | null;
 
-    @Column("timestamp without time zone", { name: "last_streamed_at" })
+    @Column("timestamp with time zone", { name: "last_streamed_at" })
     lastStreamedAt: Date | null;
 
     @Column("boolean", { name: "is_streaming", default: false })

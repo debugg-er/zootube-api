@@ -2,9 +2,9 @@ import * as express from "express";
 
 import commentRoute from "./comments_route";
 
-import authController from "../controllers/auth_controller";
 import videoController from "../controllers/video_controller";
 
+import authMiddleware from "../middlewares/auth_middleware";
 import identifyMiddleware from "../middlewares/identify_middleware";
 import multipartMiddleware from "../middlewares/multipart_middleware";
 import findMiddleware from "../middlewares/find_middleware";
@@ -18,18 +18,18 @@ router.use(express.urlencoded({ extended: true }));
 router.use("/:video_id(\\w{10})/comments", commentRoute);
 
 // get subscription videos
-router.get("/subscription", authController.authorize, videoController.getSubscriptionVideos);
+router.get("/subscription", authMiddleware.authorize, videoController.getSubscriptionVideos);
 
 // get liked videos
-router.get("/liked", authController.authorize, videoController.getLikedVideos);
+router.get("/liked", authMiddleware.authorize, videoController.getLikedVideos);
 
 // get home videos
-router.get("/", authController.authorizeIfGiven, videoController.getVideos);
+router.get("/", authMiddleware.authorizeIfGiven, videoController.getVideos);
 
 // get relate videos
 router.get(
     "/:video_id(\\w{10})/relate",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -41,7 +41,7 @@ router.get(
 // get video
 router.get(
     "/:video_id(\\w{10})",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkBlockedVideoPermission,
@@ -53,7 +53,7 @@ router.get(
 // get video analysis
 router.get(
     "/:video_id(\\w{10})/analysis",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     identifyMiddleware.isOwnVideo,
@@ -63,7 +63,7 @@ router.get(
 // react video
 router.post(
     "/:video_id(\\w{10})/reaction",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -75,7 +75,7 @@ router.post(
 // delete video reaction
 router.delete(
     "/:video_id(\\w{10})/reaction",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     videoController.deleteVideoReaction,
@@ -84,7 +84,7 @@ router.delete(
 // upload video
 router.post(
     "/",
-    authController.authorize,
+    authMiddleware.authorize,
     multipartMiddleware.storeUploadFiles("video"),
     videoController.uploadVideo,
 );
@@ -92,7 +92,7 @@ router.post(
 // update video
 router.patch(
     "/:video_id(\\w{10})",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     identifyMiddleware.isOwnVideo,
@@ -103,7 +103,7 @@ router.patch(
 // delete video
 router.delete(
     "/:video_id(\\w{10})",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     identifyMiddleware.isOwnVideo,
