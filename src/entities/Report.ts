@@ -1,4 +1,14 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { MaxLength, validateOrReject } from "class-validator";
+import {
+    BeforeInsert,
+    BeforeUpdate,
+    Column,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
+} from "typeorm";
 import { User } from "./User";
 import { Video } from "./Video";
 
@@ -8,6 +18,7 @@ export class Report {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 
+    @MaxLength(2000, { message: "reason is too long" })
     @Column("character varying", { name: "reason", length: 2000 })
     reason: string;
 
@@ -24,4 +35,10 @@ export class Report {
     @ManyToOne(() => Video, (videos) => videos.reports, { onDelete: "CASCADE" })
     @JoinColumn([{ name: "video_id", referencedColumnName: "id" }])
     video: Video;
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    async validate(): Promise<void> {
+        await validateOrReject(this, { skipMissingProperties: true });
+    }
 }

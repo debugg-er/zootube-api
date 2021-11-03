@@ -11,12 +11,12 @@ import {
     ManyToOne,
     OneToMany,
 } from "typeorm";
+import { Matches, MaxLength, validateOrReject } from "class-validator";
 import { Comment } from "./Comment";
 import { Category } from "./Category";
 import { VideoLike } from "./VideoLike";
 import { User } from "./User";
 import { randomString } from "../utils/string_function";
-import { ModelError } from "../commons/errors";
 import { urlPathRegex } from "../commons/regexs";
 import VirtualColumn from "../decorators/VirtualColumn";
 import { VideoView } from "./VideoView";
@@ -29,18 +29,22 @@ export class Video {
     @Column("character", { primary: true, name: "id", length: 10 })
     id: string;
 
+    @MaxLength(128, { message: "title is too long" })
     @Column("character varying", { name: "title", length: 128 })
     title: string;
 
+    @Matches(urlPathRegex, { message: "videoPath is not url path" })
     @Column("character varying", { name: "video_path", length: 128, select: false })
     videoPath: string;
 
+    @Matches(urlPathRegex, { message: "thumbnailPath is not url path" })
     @Column("character varying", { name: "thumbnail_path", length: 128 })
     thumbnailPath: string;
 
     @Column("integer", { name: "duration" })
     duration: number;
 
+    @MaxLength(5000, { message: "description is too long" })
     @Column("character varying", {
         name: "description",
         nullable: true,
@@ -102,7 +106,7 @@ export class Video {
 
     // --- additional methods
     async increaseView(): Promise<void> {
-        getManager().query("CALL spud_increase_video_view($1)", [this.id]);
+        return getManager().query("CALL spud_increase_video_view($1)", [this.id]);
     }
 
     static async generateId(): Promise<string> {
@@ -117,12 +121,7 @@ export class Video {
     // --- listeners
     @BeforeInsert()
     @BeforeUpdate()
-    validate() {
-        if (this.videoPath && !urlPathRegex.test(this.videoPath)) {
-            throw new ModelError("invalid video_path");
-        }
-        if (this.thumbnailPath && !urlPathRegex.test(this.thumbnailPath)) {
-            throw new ModelError("invalid thumbnail_path");
-        }
+    async validate() {
+        await validateOrReject(this, { skipMissingProperties: true });
     }
 }

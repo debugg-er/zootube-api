@@ -6,6 +6,7 @@ import env from "../providers/env";
 import logger from "../providers/logger";
 import { ModelError } from "../commons/errors";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
+import { ValidationError } from "class-validator";
 
 export function removeTempFiles(err: Error, req: Request, res: Response, next: NextFunction) {
     if (req.files || req.local.tempFilePaths.length !== 0) {
@@ -33,6 +34,16 @@ export function removeTempFiles(err: Error, req: Request, res: Response, next: N
 export function clientErrorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
     if (env.NODE_ENV === "development") {
         console.log(err);
+    }
+
+    if (Array.isArray(err) && err?.[0] instanceof ValidationError) {
+        return res.status(400).json({
+            fail: {
+                message: err
+                    .reduce((acc, cur) => [...acc, ...Object.values(cur.constraints)], [])
+                    .join(", "),
+            },
+        });
     }
 
     if (err instanceof ModelError) {
