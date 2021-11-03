@@ -346,7 +346,7 @@ class UserController {
         }
 
         // stop handle when user contain invalid property
-        user.validate();
+        await user.validate();
 
         if (avatar) {
             const { avatarPath, iconPath } = await mediaService.processAvatar(avatar);

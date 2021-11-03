@@ -35,22 +35,29 @@ class VideoController {
         const { title, description, categories, privacy = PUBLIC } = req.body;
         const { video } = req.files;
 
+        expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
         const videoType = await FileType.fromFile(video.path);
         expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
-
-        const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
         const duration = ~~(await getVideoDuration(video.path));
-
-        if (privacy) {
-            expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
-        }
-
         if (thumbnail_timestamp) {
             expect(
                 thumbnail_timestamp,
                 "400:thumbnail_timestamp out of video duration",
             ).to.lessThan(duration);
         }
+
+        const videoEntity = getRepository(Video).create({
+            id: await Video.generateId(),
+            title: title,
+            duration: duration,
+            description: description,
+            views: 0,
+            uploadedAt: new Date(),
+            uploadedBy: { id: req.local.auth.id },
+            privacy: { id: privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID },
+        });
+        await videoEntity.validate();
+
         if (early_response === "1") {
             res.status(200).json({
                 data: {
@@ -63,32 +70,20 @@ class VideoController {
             video,
             thumbnail_timestamp || duration / 2,
         );
-
-        const videoRepository = getRepository(Video);
-        const _video = videoRepository.create({
-            id: await Video.generateId(),
-            title: title,
-            duration: duration,
-            videoPath: videoPath,
-            thumbnailPath: thumbnailPath,
-            description: description,
-            views: 0,
-            uploadedAt: uploadedAt,
-            uploadedBy: { id: req.local.auth.id },
-            privacy: { id: privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID },
-        });
+        videoEntity.videoPath = videoPath;
+        videoEntity.thumbnailPath = thumbnailPath;
 
         if (categories) {
-            _video.categories = await getRepository(Category).find({
+            videoEntity.categories = await getRepository(Category).find({
                 where: { category: In(categories.split(",")) },
             });
         }
 
         // use .save to also insert category entities
-        await videoRepository.save(_video);
+        await getRepository(Video).save(videoEntity);
         if (early_response === "0") {
             res.status(200).json({
-                data: _video,
+                data: videoEntity,
             });
         }
         next();
@@ -349,7 +344,7 @@ class VideoController {
             video.privacy.name = privacy;
         }
 
-        video.validate();
+        await video.validate();
         if (thumbnail) {
             const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
             await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));

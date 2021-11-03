@@ -52,14 +52,7 @@ export class Video {
     })
     description: string | null;
 
-    @Column("bigint", {
-        name: "views",
-        transformer: {
-            to: (entityValue: number) => entityValue,
-            from: (databaseValue: string): number => parseInt(databaseValue, 10),
-        },
-        default: () => 0,
-    })
+    @Column("bigint", { name: "views", default: () => 0 })
     views: number;
 
     @Column("boolean", { name: "is_blocked", default: false, select: false })
