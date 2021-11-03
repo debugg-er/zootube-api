@@ -29,6 +29,7 @@ import { Role } from "./Role";
 import { Playlist } from "./Playlist";
 import { Stream } from "./Stream";
 import { Report } from "./Report";
+import { LoginLog } from "./LoginLog";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -102,6 +103,9 @@ export class User {
 
     @OneToMany(() => Video, (videos) => videos.uploadedBy)
     videos: Video[];
+
+    @OneToMany(() => LoginLog, (loginLogs) => loginLogs.user)
+    loginLogs: LoginLog[];
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.user)
     watchedVideos: WatchedVideo[];
