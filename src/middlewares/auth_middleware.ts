@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { jwtRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { User } from "../entities/User";
+import redisService from "../services/redis_service";
 
 class AuthMiddleware {
     @asyncHandler
@@ -16,6 +17,8 @@ class AuthMiddleware {
         // prettier-ignore
         const [/* type */, token] = authorization.split(' ');
         const decoded = await User.verifyJWT(token);
+        const isTokenInBlacklist = await redisService.isTokenInBlacklist(token);
+        expect(isTokenInBlacklist, "401:invalid token").to.be.false;
 
         req.local.auth = decoded;
         next();
@@ -31,10 +34,12 @@ class AuthMiddleware {
             // prettier-ignore
             const [/* type */, token] = authorization.split(' ');
             const decoded = await User.verifyJWT(token);
-
+            if (await redisService.isTokenInBlacklist(token)) {
+                return;
+            }
             req.local.auth = decoded;
-            next();
         } catch {
+        } finally {
             next();
         }
     }
