@@ -12,6 +12,9 @@ router.use(express.urlencoded({ extended: true }));
 // login
 router.post("/login", authController.login);
 
+// get login logs
+router.get("/logs", authMiddleware.authorize, authController.getLoginLogs);
+
 // logout
 router.post("/logout", authMiddleware.authorize, authController.logout);
 

@@ -134,6 +134,29 @@ class AuthController {
             data: { message: "change password success" },
         });
     }
+
+    @asyncHandler
+    public async getLoginLogs(req: Request, res: Response) {
+        const { auth } = req.local;
+
+        const loginLogs = await getRepository(LoginLog).find({
+            select: [
+                "id",
+                "loggedInAt",
+                "loggedOutAt",
+                "expireAt",
+                "os",
+                "cpu",
+                "device",
+                "browser",
+            ],
+            where: { user: { id: auth.id } },
+        });
+
+        res.status(200).json({
+            data: loginLogs,
+        });
+    }
 }
 
 export default new AuthController();
