@@ -21,4 +21,13 @@ router.post("/register", authController.register);
 // reset password
 router.post("/reset", authMiddleware.authorize, authController.changePassword);
 
+// get login logs
+router.get("/logs", authMiddleware.authorize, authController.getLoginLogs);
+
+// delete login log by id
+router.delete("/logs/:log_id(\\d+)", authMiddleware.authorize, authController.deleteDevice);
+
+// delete all login log
+router.delete("/logs", authMiddleware.authorize, authController.deleteAllOtherDevices);
+
 export default router;
