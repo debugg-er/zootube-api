@@ -1,8 +1,8 @@
 import * as express from "express";
 
 import subscriptionController from "../controllers/subscription_controller";
-import authController from "../controllers/auth_controller";
 
+import authMiddleware from "../middlewares/auth_middleware"
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 
@@ -14,7 +14,7 @@ router.use(express.urlencoded({ extended: true }));
 // subscribe user
 router.post(
     "/:username",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findUser,
     checkMiddleware.checkUserExist,
     checkMiddleware.checkUserIsNotBlocked,
@@ -24,7 +24,7 @@ router.post(
 // unsubscribe user
 router.delete(
     "/:username",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findUser,
     checkMiddleware.checkUserExist,
     subscriptionController.unsubscribe,

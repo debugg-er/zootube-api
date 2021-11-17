@@ -1,4 +1,7 @@
+import {MaxLength, validateOrReject} from "class-validator";
 import {
+    BeforeInsert,
+    BeforeUpdate,
     Column,
     Entity,
     Index,
@@ -18,6 +21,7 @@ export class Comment {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 
+    @MaxLength(2000, { message: "content is too long" })
     @Column("character varying", { name: "content", length: 2000 })
     content: string;
 
@@ -56,4 +60,10 @@ export class Comment {
 
     @VirtualColumn("boolean")
     react: boolean | null;
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    async validate(): Promise<void> {
+        await validateOrReject(this, { skipMissingProperties: true });
+    }
 }

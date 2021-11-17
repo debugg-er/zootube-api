@@ -1,11 +1,16 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository } from "typeorm";
+import * as FileType from "file-type";
+import getVideoDuration from "get-video-duration";
 
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
 import { Stream } from "../entities/Stream";
+import { Video } from "../entities/Video";
+import { PRIVATE_ID } from "../entities/Privacy";
+import mediaService from "../services/media_service";
 
 class StreamController {
     @asyncHandler
@@ -77,6 +82,46 @@ class StreamController {
         res.status(200).json({
             data: stream,
         });
+    }
+
+    @asyncHandler
+    @mustExist("files.video", "body.stream_id", "body.stream_key")
+    public async uploadStreamedVideo(req: Request, res: Response, next: NextFunction) {
+        const { stream_id, stream_key } = req.body;
+        const { video } = req.files;
+
+        const videoType = await FileType.fromFile(video.path);
+        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
+        const stream = await getRepository(Stream).findOne({
+            where: { id: stream_id, streamKey: stream_key },
+            relations: ["user"],
+        });
+        expect(stream, "404:stream not found").to.exist;
+        const duration = ~~(await getVideoDuration(video.path));
+
+        const videoEntity = getRepository(Video).create({
+            id: await Video.generateId(),
+            title: new Date().toLocaleString(),
+            duration: duration,
+            views: 0,
+            uploadedAt: new Date(),
+            uploadedBy: { id: stream.user.id },
+            privacy: { id: PRIVATE_ID },
+        });
+        await videoEntity.validate();
+
+        res.status(200).json({
+            data: {
+                message: "upload video success, waiting to process",
+            },
+        });
+
+        const { videoPath, thumbnailPath } = await mediaService.processVideo(video, duration / 2);
+        videoEntity.videoPath = videoPath;
+        videoEntity.thumbnailPath = thumbnailPath;
+
+        await getRepository(Video).save(videoEntity);
+        next();
     }
 }
 

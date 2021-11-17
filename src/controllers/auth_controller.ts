@@ -1,13 +1,16 @@
 import { expect } from "chai";
-import { NextFunction, Request, Response } from "express";
-import { getRepository } from "typeorm";
-import { jwtRegex } from "../commons/regexs";
+import { Request, Response } from "express";
+import { getRepository, In, Not } from "typeorm";
+
 import asyncHandler from "../decorators/async_handler";
-import { isBinary, mustExist } from "../decorators/validate_decorators";
+import { isBinary, isNumberIfExist, mustExist } from "../decorators/validate_decorators";
+import { LoginLog } from "../entities/LoginLog";
 import { USER_ID } from "../entities/Role";
 import { Stream, STREAM_KEY_LENGTH } from "../entities/Stream";
 import { User } from "../entities/User";
 import { randomString } from "../utils/string_function";
+import redisService from "../services/redis_service";
+import { mustInRangeIfExist } from "../decorators/assert_decorators";
 
 class AuthController {
     @asyncHandler
@@ -44,10 +47,17 @@ class AuthController {
         });
         await getRepository(Stream).insert(userStream);
 
+        const token = await user.signJWT();
+        const decoedToken = await User.verifyJWT(token);
+        await getRepository(LoginLog).insert({
+            user: user,
+            token: token,
+            expireAt: new Date(decoedToken.exp * 1000),
+            ...LoginLog.parseUserAgent(req.get("user-agent")),
+        });
+
         res.status(201).json({
-            data: {
-                token: await newUser.signJWT(),
-            },
+            data: { token: token },
         });
     }
 
@@ -56,9 +66,7 @@ class AuthController {
     public async login(req: Request, res: Response) {
         const { username, password } = req.body;
 
-        const userRepository = getRepository(User);
-
-        const user = await userRepository
+        const user = await getRepository(User)
             .createQueryBuilder("users")
             .select(["users.id", "users.username", "users.password", "users.isBlocked"])
             .innerJoinAndSelect("users.role", "roles")
@@ -67,48 +75,44 @@ class AuthController {
 
         expect(user, "404:username doesn't exists").to.exist;
         expect(user.isBlocked, "405:user was blocked").to.be.false;
-
         const isPasswordMatch = await user.comparePassword(password);
         expect(isPasswordMatch, "400:password don't match").to.be.true;
 
+        const token = await user.signJWT();
+        const decoedToken = await User.verifyJWT(token);
+        await getRepository(LoginLog).insert({
+            user: user,
+            token: token,
+            expireAt: new Date(decoedToken.exp * 1000),
+            ...LoginLog.parseUserAgent(req.get("user-agent")),
+        });
+
         res.status(200).json({
-            data: {
-                token: await user.signJWT(),
-            },
+            data: { token: token },
         });
     }
 
     @asyncHandler
-    public async authorize(req: Request, res: Response, next: NextFunction) {
-        const authorization: string = req.headers.authorization;
+    public async logout(req: Request, res: Response) {
+        const { auth } = req.local;
+        const [, token] = req.headers.authorization.split(" ");
 
-        expect(authorization, "401:missing token").to.exist;
-        expect(authorization, "401:invalid token format").to.match(jwtRegex);
+        const { affected } = await getRepository(LoginLog).update(
+            {
+                user: { id: auth.id },
+                token: token,
+                loggedOutAt: null,
+            },
+            {
+                loggedOutAt: new Date(),
+            },
+        );
+        expect(affected, "404:login info not found").to.not.equal(0);
+        await redisService.addTokensToBlacklist(token);
 
-        // prettier-ignore
-        const [/* type */, token] = authorization.split(' ');
-        const decoded = await User.verifyJWT(token);
-
-        req.local.auth = decoded;
-        next();
-    }
-
-    public async authorizeIfGiven(req: Request, res: Response, next: NextFunction) {
-        const authorization: string = req.headers.authorization;
-
-        try {
-            expect(authorization, "401:missing token").to.exist;
-            expect(authorization, "401:invalid token format").to.match(jwtRegex);
-
-            // prettier-ignore
-            const [/* type */, token] = authorization.split(' ');
-            const decoded = await User.verifyJWT(token);
-
-            req.local.auth = decoded;
-            next();
-        } catch {
-            next();
-        }
+        res.status(200).json({
+            data: { message: "logged out" },
+        });
     }
 
     @asyncHandler
@@ -129,6 +133,80 @@ class AuthController {
 
         return res.status(200).json({
             data: { message: "change password success" },
+        });
+    }
+
+    @asyncHandler
+    @isNumberIfExist("query.offset", "query.limit")
+    @mustInRangeIfExist("query.offset", 0, Infinity)
+    @mustInRangeIfExist("query.limit", 0, 100)
+    public async getLoginLogs(req: Request, res: Response) {
+        const { auth } = req.local;
+        const offset = +req.query.offset || 0;
+        const limit = +req.query.limit || 30;
+
+        const loginLogs = await getRepository(LoginLog).find({
+            select: [
+                "id",
+                "loggedInAt",
+                "loggedOutAt",
+                "expireAt",
+                "os",
+                "cpu",
+                "device",
+                "browser",
+            ],
+            where: { user: { id: auth.id } },
+            skip: offset,
+            take: limit,
+            order: { loggedInAt: "DESC" },
+        });
+
+        res.status(200).json({
+            data: loginLogs,
+        });
+    }
+
+    @asyncHandler
+    public async deleteDevice(req: Request, res: Response) {
+        const log_id = +req.params.log_id;
+        const [, token] = req.headers.authorization.split(" ");
+
+        const loginLog = await getRepository(LoginLog).findOne(log_id);
+        expect(loginLog, "404:device not found").to.exist;
+        expect(loginLog.token, "400:can't logout current device").to.not.equal(token);
+
+        if (loginLog.loggedOutAt === null && loginLog.expireAt > new Date()) {
+            await redisService.addTokensToBlacklist(loginLog.token);
+        }
+        await getRepository(LoginLog).delete({ id: loginLog.id });
+
+        res.status(200).json({
+            data: { message: "deleted device" },
+        });
+    }
+
+    @asyncHandler
+    public async deleteAllOtherDevices(req: Request, res: Response) {
+        const { auth } = req.local;
+        const [, token] = req.headers.authorization.split(" ");
+
+        const loginLogs = await getRepository(LoginLog).find({
+            where: {
+                user: { id: auth.id },
+                token: Not(token),
+            },
+        });
+
+        const tokensAreNotExpired = loginLogs
+            .filter((loginLog) => loginLog.loggedOutAt === null && loginLog.expireAt > new Date())
+            .map((loginLog) => loginLog.token);
+
+        await redisService.addTokensToBlacklist(tokensAreNotExpired);
+        await getRepository(LoginLog).delete({ id: In(loginLogs.map((loginLog) => loginLog.id)) });
+
+        res.status(200).json({
+            data: { message: "deleted other devices" },
         });
     }
 }

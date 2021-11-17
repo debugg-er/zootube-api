@@ -1,12 +1,13 @@
 import * as express from "express";
 
 import searchController from "../controllers/search_controller";
-import authController from "../controllers/auth_controller";
+
+import authMiddleware from "../middlewares/auth_middleware"
 
 const router = express.Router();
 
 // search videos
-router.get("/videos", authController.authorizeIfGiven, searchController.searchVideos);
+router.get("/videos", authMiddleware.authorizeIfGiven, searchController.searchVideos);
 
 // search users
 router.get("/users", searchController.searchUsers);

@@ -1,4 +1,7 @@
+import { MaxLength, validateOrReject } from "class-validator";
 import {
+    BeforeInsert,
+    BeforeUpdate,
     Column,
     Entity,
     Index,
@@ -17,9 +20,11 @@ export class Playlist {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 
+    @MaxLength(128, { message: "playlist name is too long" })
     @Column("character varying", { name: "name", length: 128 })
     name: string;
 
+    @MaxLength(5000, { message: "description is too long" })
     @Column("character varying", { name: "description", length: 5000 })
     description: string | null;
 
@@ -35,4 +40,10 @@ export class Playlist {
 
     @VirtualColumn("integer")
     totalVideos: number | null;
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    async validate(): Promise<void> {
+        await validateOrReject(this, { skipMissingProperties: true });
+    }
 }
