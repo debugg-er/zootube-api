@@ -10,7 +10,12 @@ export class RedisServiceError extends Error {
 }
 
 class RedisService {
-    private client = new Redis(env.REDIS_PORT, env.REDIS_HOST);
+    private client = new Redis({
+        port: env.REDIS_PORT,
+        host: env.REDIS_HOST,
+        password: env.REDIS_PASSWORD,
+        family: 4,
+    });
 
     public async addTokensToBlacklist(tokens: string | Array<string>): Promise<void> {
         if (!Array.isArray(tokens)) tokens = [tokens];
