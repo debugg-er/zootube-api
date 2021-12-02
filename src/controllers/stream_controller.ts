@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository } from "typeorm";
-import * as FileType from "file-type";
-import getVideoDuration from "get-video-duration";
 
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
@@ -85,26 +83,20 @@ class StreamController {
     }
 
     @asyncHandler
-    @mustExist("files.video", "body.stream_id", "body.stream_key")
+    @mustExist("body.video", "body.stream_id", "body.stream_key")
     public async uploadStreamedVideo(req: Request, res: Response, next: NextFunction) {
-        const { stream_id, stream_key } = req.body;
-        const { video } = req.files;
+        const { stream_id, stream_key, video } = req.body;
 
-        const videoType = await FileType.fromFile(video.path);
-        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
         const stream = await getRepository(Stream).findOne({
             where: { id: stream_id, streamKey: stream_key },
             relations: ["user"],
         });
         expect(stream, "404:stream not found").to.exist;
-        const duration = ~~(await getVideoDuration(video.path));
 
         const videoEntity = getRepository(Video).create({
             id: await Video.generateId(),
             title: new Date().toLocaleString(),
-            duration: duration,
             views: 0,
-            uploadedAt: new Date(),
             uploadedBy: { id: stream.user.id },
             privacy: { id: PRIVATE_ID },
         });
@@ -116,9 +108,10 @@ class StreamController {
             },
         });
 
-        const { videoPath, thumbnailPath } = await mediaService.processVideo(video, duration / 2);
+        const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(video);
         videoEntity.videoPath = videoPath;
         videoEntity.thumbnailPath = thumbnailPath;
+        videoEntity.duration = duration;
 
         await getRepository(Video).save(videoEntity);
         next();

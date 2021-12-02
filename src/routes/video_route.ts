@@ -82,12 +82,7 @@ router.delete(
 );
 
 // upload video
-router.post(
-    "/",
-    authMiddleware.authorize,
-    multipartMiddleware.storeUploadFiles("video"),
-    videoController.uploadVideo,
-);
+router.post("/", authMiddleware.authorize, videoController.uploadVideo);
 
 // update video
 router.patch(

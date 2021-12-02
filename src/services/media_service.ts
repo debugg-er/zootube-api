@@ -12,26 +12,19 @@ export class MediaServiceError extends Error {
 
 class MediaService {
     public async processVideo(
-        video: File,
-        thumbnailTimestamp: number,
-    ): Promise<{ videoPath: string; thumbnailPath: string }> {
+        video: string,
+        thumbnailTimestamp?: number,
+    ): Promise<{ videoPath: string; thumbnailPath: string; duration: number }> {
         try {
-            const { data } = await request.post(env.MEDIA_SERVER_ENDPOINT + "/videos", {
+            const { data } = await request.patch(env.MEDIA_SERVER_ENDPOINT + "/videos/" + video, {
                 json: true,
-                formData: {
+                form: {
                     seek: ~~thumbnailTimestamp,
-                    video: {
-                        value: fs.createReadStream(video.path),
-                        options: {
-                            filename: video.name,
-                            contentType: video.mimetype,
-                        },
-                    },
                 },
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body.fail.message);
         }
     }
 
@@ -51,7 +44,7 @@ class MediaService {
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body);
         }
     }
 
@@ -71,7 +64,7 @@ class MediaService {
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body);
         }
     }
 
@@ -91,7 +84,7 @@ class MediaService {
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body);
         }
     }
 

@@ -1,5 +1,4 @@
 import * as FileType from "file-type";
-import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { Brackets, createQueryBuilder, getRepository, In } from "typeorm";
@@ -25,53 +24,38 @@ import { PRIVATE, PRIVATE_ID, PUBLIC, PUBLIC_ID } from "../entities/Privacy";
 
 class VideoController {
     @asyncHandler
-    @mustExist("body.title", "files.video")
+    @mustExist("body.title", "body.video")
     @mustMatchIfExist("body.categories", listRegex)
     @isNumberIfExist("body.thumbnail_timestamp")
-    @isBinaryIfExist("body.early_response")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
-        const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
-        const early_response = req.body.early_response || "1";
-        const { title, description, categories, privacy = PUBLIC } = req.body;
-        const { video } = req.files;
+        const thumbnail_timestamp = +req.body.thumbnail_timestamp;
+        const { video, title, description, categories, privacy = PUBLIC } = req.body;
 
         expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
-        const videoType = await FileType.fromFile(video.path);
-        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
-        const duration = ~~(await getVideoDuration(video.path));
-        if (thumbnail_timestamp) {
-            expect(
-                thumbnail_timestamp,
-                "400:thumbnail_timestamp out of video duration",
-            ).to.lessThan(duration);
-        }
 
         const videoEntity = getRepository(Video).create({
             id: await Video.generateId(),
             title: title,
-            duration: duration,
             description: description,
             views: 0,
-            uploadedAt: new Date(),
             uploadedBy: { id: req.local.auth.id },
             privacy: { id: privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID },
         });
         await videoEntity.validate();
 
-        if (early_response === "1") {
-            res.status(200).json({
-                data: {
-                    message: "upload video success, waiting to process",
-                },
+        try {
+            const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(
+                video,
+                thumbnail_timestamp || undefined,
+            );
+            videoEntity.videoPath = videoPath;
+            videoEntity.thumbnailPath = thumbnailPath;
+            videoEntity.duration = duration;
+        } catch (e) {
+            return res.status(400).json({
+                fail: { message: e.message },
             });
         }
-
-        const { videoPath, thumbnailPath } = await mediaService.processVideo(
-            video,
-            thumbnail_timestamp || duration / 2,
-        );
-        videoEntity.videoPath = videoPath;
-        videoEntity.thumbnailPath = thumbnailPath;
 
         if (categories) {
             videoEntity.categories = await getRepository(Category).find({
@@ -81,11 +65,9 @@ class VideoController {
 
         // use .save to also insert category entities
         await getRepository(Video).save(videoEntity);
-        if (early_response === "0") {
-            res.status(200).json({
-                data: videoEntity,
-            });
-        }
+        res.status(200).json({
+            data: videoEntity,
+        });
         next();
     }
 

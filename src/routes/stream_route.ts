@@ -1,7 +1,6 @@
 import * as express from "express";
 
 import streamController from "../controllers/stream_controller";
-import multipartMiddleware from "../middlewares/multipart_middleware";
 
 const router = express.Router();
 
@@ -21,10 +20,6 @@ router.get("/:stream_id(\\w{10})", streamController.getStream);
 router.patch("/:stream_id(\\w{10})", streamController.updateStreamStatus);
 
 // upload streamed video
-router.post(
-    "/",
-    multipartMiddleware.storeUploadFiles("video"),
-    streamController.uploadStreamedVideo,
-);
+router.post("/", streamController.uploadStreamedVideo);
 
 export default router;
