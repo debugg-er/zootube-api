@@ -6,7 +6,6 @@ import videoController from "../controllers/video_controller";
 
 import authMiddleware from "../middlewares/auth_middleware";
 import identifyMiddleware from "../middlewares/identify_middleware";
-import multipartMiddleware from "../middlewares/multipart_middleware";
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 
@@ -91,7 +90,6 @@ router.patch(
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     identifyMiddleware.isOwnVideo,
-    multipartMiddleware.storeUploadFiles("thumbnail"),
     videoController.updateVideo,
 );
 

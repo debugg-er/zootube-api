@@ -1,4 +1,3 @@
-import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
@@ -318,22 +317,12 @@ class UserController {
         "body.last_name",
         "body.female",
         "body.description",
-        "files.avatar",
-        "files.banner",
+        "body.avatar",
+        "body.banner",
     )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
-        const { first_name, last_name, female, description } = req.body;
-        const { avatar, banner } = req.files;
-
-        if (avatar) {
-            const avatarType = await FileType.fromFile(avatar.path);
-            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-        }
-        if (banner) {
-            const bannerType = await FileType.fromFile(banner.path);
-            expect(bannerType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-        }
+        const { first_name, last_name, female, description, avatar, banner } = req.body;
 
         const userRepository = getRepository(User);
         const user = await userRepository.findOne(req.local.auth.id);
@@ -360,6 +349,7 @@ class UserController {
             user.avatarPath = avatarPath;
             user.iconPath = iconPath;
         }
+        await userRepository.save(user);
 
         if (banner) {
             const { bannerPath } = await mediaService.processBanner(banner);
@@ -369,7 +359,6 @@ class UserController {
 
             user.bannerPath = bannerPath;
         }
-
         await userRepository.save(user);
 
         res.status(200).json({
@@ -469,18 +458,12 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.name", "files.thumbnail", "body.renew_key", "body.description")
+    @mustExistOne("body.name", "body.thumbnail", "body.renew_key", "body.description")
     @isBinaryIfExist("body.renew_key")
     public async updateStreamInfo(req: Request, res: Response, next: NextFunction) {
         const { auth } = req.local;
-        const { thumbnail } = req.files;
-        const { name, description } = req.body;
+        const { name, description, thumbnail } = req.body;
         const renew_key = req.body.renew_key === "1";
-
-        if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
-        }
 
         const stream = await getRepository(Stream)
             .createQueryBuilder("streams")

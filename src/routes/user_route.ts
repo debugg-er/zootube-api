@@ -5,7 +5,6 @@ import userController from "../controllers/user_controller";
 import authMiddleware from "../middlewares/auth_middleware";
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
-import multipartMiddleware from "../middlewares/multipart_middleware";
 
 const router = express.Router();
 
@@ -31,20 +30,10 @@ router.get("/me/subscribers", authMiddleware.authorize, userController.getOwnSub
 router.get("/me/stream", authMiddleware.authorize, userController.getOwnStream);
 
 // update authorized user stream
-router.patch(
-    "/me/stream",
-    authMiddleware.authorize,
-    multipartMiddleware.storeUploadFiles("thumbnail"),
-    userController.updateStreamInfo,
-);
+router.patch("/me/stream", authMiddleware.authorize, userController.updateStreamInfo);
 
 // update user
-router.patch(
-    "/me",
-    authMiddleware.authorize,
-    multipartMiddleware.storeUploadFiles("avatar", "banner"),
-    userController.updateProfile,
-);
+router.patch("/me", authMiddleware.authorize, userController.updateProfile);
 
 // get user stream
 router.get(

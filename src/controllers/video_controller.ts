@@ -1,4 +1,3 @@
-import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { Brackets, createQueryBuilder, getRepository, In } from "typeorm";
@@ -43,19 +42,13 @@ class VideoController {
         });
         await videoEntity.validate();
 
-        try {
-            const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(
-                video,
-                thumbnail_timestamp || undefined,
-            );
-            videoEntity.videoPath = videoPath;
-            videoEntity.thumbnailPath = thumbnailPath;
-            videoEntity.duration = duration;
-        } catch (e) {
-            return res.status(400).json({
-                fail: { message: e.message },
-            });
-        }
+        const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(
+            video,
+            thumbnail_timestamp || undefined,
+        );
+        videoEntity.videoPath = videoPath;
+        videoEntity.thumbnailPath = thumbnailPath;
+        videoEntity.duration = duration;
 
         if (categories) {
             videoEntity.categories = await getRepository(Category).find({
@@ -298,19 +291,14 @@ class VideoController {
     }
 
     @asyncHandler
-    @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
+    @mustExistOne("body.title", "body.description", "body.categories", "body.thumbnail")
     @mustMatchIfExist("body.categories", listRegex)
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
-        const { title, description, categories, privacy } = req.body;
-        const { thumbnail } = req.files;
+        const { title, description, categories, privacy, thumbnail } = req.body;
         const { video } = req.local;
 
         if (privacy) {
             expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
-        }
-        if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
         }
 
         video.title = title || video.title;
