@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as _ from "lodash";
 import { Request, Response, NextFunction } from "express";
 import { AssertionError } from "chai";
@@ -9,29 +8,6 @@ import env from "../providers/env";
 import logger from "../providers/logger";
 import { ModelError } from "../commons/errors";
 import { MediaServiceError } from "../services/media_service";
-
-export function removeTempFiles(err: Error, req: Request, res: Response, next: NextFunction) {
-    if (req.files || req.local.tempFilePaths.length !== 0) {
-        const filePathWillBeRemoved = [
-            ...(req.files ? _.values(req.files).map((file) => file.path) : []),
-            ...req.local.tempFilePaths,
-        ];
-
-        filePathWillBeRemoved.forEach((filePath) => {
-            fs.unlink(filePath, (err) => {
-                if (err) {
-                    if (env.NODE_ENV === "development") {
-                        console.log(err);
-                    } else if (env.NODE_ENV === "production") {
-                        logger.error(err);
-                    }
-                }
-            });
-        });
-    }
-
-    next(err);
-}
 
 export function clientErrorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
     if (env.NODE_ENV === "development") {

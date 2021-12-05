@@ -14,8 +14,6 @@ import playlistRoute from "../routes/playlist_route";
 import streamRoute from "../routes/stream_route";
 import reportRoute from "../routes/report_route";
 
-import cleanMiddleware from "../middlewares/clean_middleware";
-
 import * as errorHandler from "../utils/error_handler";
 
 const app: express.Application = express();
@@ -25,7 +23,7 @@ if (env.NODE_ENV === "development") {
 }
 
 app.use((req, res, next) => {
-    req.local = { tempFilePaths: [] };
+    req.local = {};
     next();
 });
 
@@ -41,9 +39,6 @@ app.use("/playlists", playlistRoute);
 app.use("/streams", streamRoute);
 app.use("/reports", reportRoute);
 
-app.use(cleanMiddleware.removeTempFiles);
-
-app.use(errorHandler.removeTempFiles);
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);
 
