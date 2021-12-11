@@ -47,10 +47,10 @@ class AuthController {
         });
         await getRepository(Stream).insert(userStream);
 
-        const token = await user.signJWT();
+        const token = await newUser.signJWT();
         const decoedToken = await User.verifyJWT(token);
         await getRepository(LoginLog).insert({
-            user: user,
+            user: newUser,
             token: token,
             expireAt: new Date(decoedToken.exp * 1000),
             ...LoginLog.parseUserAgent(req.get("user-agent")),
