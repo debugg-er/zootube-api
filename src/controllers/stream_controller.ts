@@ -108,10 +108,13 @@ class StreamController {
             },
         });
 
-        const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(video);
-        videoEntity.videoPath = videoPath;
-        videoEntity.thumbnailPath = thumbnailPath;
-        videoEntity.duration = duration;
+        const processedData = await mediaService.processVideo(video, videoEntity.id);
+        videoEntity.video360Path = processedData.video360Path;
+        videoEntity.video480Path = processedData.video480Path;
+        videoEntity.video720Path = processedData.video720Path;
+        videoEntity.video1080Path = processedData.video1080Path;
+        videoEntity.thumbnailPath = processedData.thumbnailPath;
+        videoEntity.duration = processedData.duration;
 
         await getRepository(Video).save(videoEntity);
         next();

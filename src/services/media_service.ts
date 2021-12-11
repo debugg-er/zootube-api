@@ -8,16 +8,27 @@ export class MediaServiceError extends Error {
     }
 }
 
+interface ProcessVideoResponse {
+    video360Path?: string;
+    video480Path?: string;
+    video720Path?: string;
+    video1080Path?: string;
+    thumbnailPath: string;
+    duration: number;
+}
+
 class MediaService {
     public async processVideo(
         video: string,
+        videoId: string,
         thumbnailTimestamp?: number,
-    ): Promise<{ videoPath: string; thumbnailPath: string; duration: number }> {
+    ): Promise<ProcessVideoResponse> {
         try {
             const { data } = await request.patch(env.MEDIA_SERVER_ENDPOINT + "/videos/" + video, {
                 json: true,
                 form: {
                     seek: ~~thumbnailTimestamp,
+                    video_id: videoId,
                 },
             });
             return data;

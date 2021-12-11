@@ -34,8 +34,20 @@ export class Video {
     title: string;
 
     @Matches(urlPathRegex, { message: "videoPath is not url path" })
-    @Column("character varying", { name: "video_path", length: 128, select: false })
-    videoPath: string;
+    @Column("character varying", { name: "video360_path", length: 128 })
+    video360Path: string | null;
+
+    @Matches(urlPathRegex, { message: "videoPath is not url path" })
+    @Column("character varying", { name: "video480_path", length: 128, select: false })
+    video480Path: string | null;
+
+    @Matches(urlPathRegex, { message: "videoPath is not url path" })
+    @Column("character varying", { name: "video720_path", length: 128, select: false })
+    video720Path: string | null;
+
+    @Matches(urlPathRegex, { message: "videoPath is not url path" })
+    @Column("character varying", { name: "video1080_path", length: 128, select: false })
+    video1080Path: string | null;
 
     @Matches(urlPathRegex, { message: "thumbnailPath is not url path" })
     @Column("character varying", { name: "thumbnail_path", length: 128 })

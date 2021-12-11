@@ -12,7 +12,12 @@ class FindMiddleware {
     public async findVideo(req: Request, res: Response, next: NextFunction) {
         req.local.video = await getRepository(Video)
             .createQueryBuilder("videos")
-            .addSelect(["videos.isBlocked", "videos.videoPath"])
+            .addSelect([
+                "videos.video480Path",
+                "videos.video720Path",
+                "videos.video1080Path",
+                "videos.isBlocked",
+            ])
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.id", "users.username", "users.isBlocked"])
             .innerJoinAndSelect("users.role", "roles")

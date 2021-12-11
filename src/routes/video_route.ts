@@ -103,4 +103,13 @@ router.delete(
     videoController.deleteVideo,
 );
 
+// Note: Must not allow user to call this route
+// update video
+router.post(
+    "/:video_id(\\w{10})/qualities",
+    findMiddleware.findVideo,
+    checkMiddleware.checkVideoExist,
+    videoController.updateVideoQuality,
+);
+
 export default router;

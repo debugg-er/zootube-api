@@ -42,13 +42,17 @@ class VideoController {
         });
         await videoEntity.validate();
 
-        const { videoPath, thumbnailPath, duration } = await mediaService.processVideo(
+        const processedData = await mediaService.processVideo(
             video,
+            videoEntity.id,
             thumbnail_timestamp || undefined,
         );
-        videoEntity.videoPath = videoPath;
-        videoEntity.thumbnailPath = thumbnailPath;
-        videoEntity.duration = duration;
+        videoEntity.video360Path = processedData.video360Path;
+        videoEntity.video480Path = processedData.video480Path;
+        videoEntity.video720Path = processedData.video720Path;
+        videoEntity.video1080Path = processedData.video1080Path;
+        videoEntity.thumbnailPath = processedData.thumbnailPath;
+        videoEntity.duration = processedData.duration;
 
         if (categories) {
             videoEntity.categories = await getRepository(Category).find({
@@ -75,7 +79,12 @@ class VideoController {
 
         let videoQueryBuilder = videoRepository
             .createQueryBuilder("videos")
-            .addSelect(["videos.videoPath", "videos.isBlocked"])
+            .addSelect([
+                "videos.video480Path",
+                "videos.video720Path",
+                "videos.video1080Path",
+                "videos.isBlocked",
+            ])
             .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
@@ -335,7 +344,18 @@ class VideoController {
     public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
-        await mediaService.deleteVideo(extractFilenameFromPath(video.videoPath));
+        if (video.video360Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video360Path));
+        }
+        if (video.video480Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video480Path));
+        }
+        if (video.video720Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video720Path));
+        }
+        if (video.video1080Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video1080Path));
+        }
         await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
         await getRepository(Video).delete({ id: video.id });
@@ -525,6 +545,29 @@ class VideoController {
         };
 
         res.status(200).json({ data: data });
+    }
+
+    @asyncHandler
+    @mustExistOne(
+        "body.video360Path",
+        "body.video480Path",
+        "body.video720Path",
+        "body.video1080Path",
+    )
+    public async updateVideoQuality(req: Request, res: Response, next: NextFunction) {
+        const { video360Path, video480Path, video720Path, video1080Path } = req.body;
+        const { video } = req.local;
+
+        if (video360Path) video.video360Path = video360Path;
+        if (video480Path) video.video480Path = video480Path;
+        if (video720Path) video.video720Path = video720Path;
+        if (video1080Path) video.video1080Path = video1080Path;
+
+        await getRepository(Video).save(video);
+
+        res.status(200).json({
+            data: { message: "update success" },
+        });
     }
 }
 
