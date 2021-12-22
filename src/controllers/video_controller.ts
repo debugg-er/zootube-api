@@ -10,6 +10,7 @@ import {
     mustExistOne,
 } from "../decorators/validate_decorators";
 import mediaService from "../services/media_service";
+import redisService from "../services/redis_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
@@ -118,10 +119,16 @@ class VideoController {
         res.status(200).json({
             data: video,
         });
+
         if (!is_watch) return;
 
+        const ip = req.headers["x-forwarded-for"]?.toString() || req.socket.remoteAddress;
+        const agent = req.headers["user-agent"] || "";
         // increase view count
-        await video.increaseView();
+        if (!(await redisService.isClientInWaitList(ip, agent, video.id))) {
+            await video.increaseView();
+            await redisService.addClientToWaitList(ip, agent, video.id);
+        }
         // store history if user logged in
         if (req.local.auth) {
             const { id } = req.local.auth;

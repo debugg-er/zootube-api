@@ -48,6 +48,22 @@ class RedisService {
             throw new RedisServiceError(e.message, e.command);
         }
     }
+
+    public async addClientToWaitList(ip: string, agent: string, videoId: string): Promise<void> {
+        try {
+            await this.client.set(ip + agent + videoId, 1, "EX", 30);
+        } catch (e) {
+            throw new RedisServiceError(e.message, e.command);
+        }
+    }
+
+    public async isClientInWaitList(ip: string, agent: string, videoId: string): Promise<boolean> {
+        try {
+            return !!(await this.client.get(ip + agent + videoId));
+        } catch (e) {
+            throw new RedisServiceError(e.message, e.command);
+        }
+    }
 }
 
 export default new RedisService();
