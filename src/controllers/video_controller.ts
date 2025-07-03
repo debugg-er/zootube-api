@@ -1,16 +1,16 @@
-import * as FileType from "file-type";
-import getVideoDuration from "get-video-duration";
 import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
-import { Brackets, getRepository, In } from "typeorm";
+import { Brackets, createQueryBuilder, getRepository, In } from "typeorm";
 
 import {
     isBinaryIfExist,
+    isDateFormatIfExist,
     isNumberIfExist,
     mustExist,
     mustExistOne,
 } from "../decorators/validate_decorators";
 import mediaService from "../services/media_service";
+import redisService from "../services/redis_service";
 import { listRegex } from "../commons/regexs";
 import asyncHandler from "../decorators/async_handler";
 import { mustInRangeIfExist, mustMatchIfExist } from "../decorators/assert_decorators";
@@ -24,77 +24,55 @@ import { PRIVATE, PRIVATE_ID, PUBLIC, PUBLIC_ID } from "../entities/Privacy";
 
 class VideoController {
     @asyncHandler
-    @mustExist("body.title", "files.video")
+    @mustExist("body.title", "body.video")
     @mustMatchIfExist("body.categories", listRegex)
     @isNumberIfExist("body.thumbnail_timestamp")
-    @isBinaryIfExist("body.early_response")
     public async uploadVideo(req: Request, res: Response, next: NextFunction) {
-        const thumbnail_timestamp = parseInt(req.body.thumbnail_timestamp);
-        const early_response = req.body.early_response || "1";
-        const { title, description, categories, privacy = PUBLIC } = req.body;
-        const { video } = req.files;
+        const thumbnail_timestamp = +req.body.thumbnail_timestamp;
+        const { video, title, description, categories, privacy = PUBLIC } = req.body;
 
-        const videoType = await FileType.fromFile(video.path);
-        expect(videoType.ext, "400:invalid video").to.be.oneOf(["mp4", "webm", "mkv"]);
+        expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
 
-        const uploadedAt = new Date(); // manualy insert uploadedAt to avoid incorrect cause by post request
-        const duration = ~~(await getVideoDuration(video.path));
-
-        if (privacy) {
-            expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
-        }
-
-        if (thumbnail_timestamp) {
-            expect(
-                thumbnail_timestamp,
-                "400:thumbnail_timestamp out of video duration",
-            ).to.lessThan(duration);
-        }
-        if (early_response === "1") {
-            res.status(200).json({
-                data: {
-                    message: "upload video success, waiting to process",
-                },
-            });
-        }
-
-        const { videoPath, thumbnailPath } = await mediaService.processVideo(
-            video,
-            thumbnail_timestamp || duration / 2,
-        );
-
-        const videoRepository = getRepository(Video);
-        const _video = videoRepository.create({
+        const videoEntity = getRepository(Video).create({
             id: await Video.generateId(),
             title: title,
-            duration: duration,
-            videoPath: videoPath,
-            thumbnailPath: thumbnailPath,
             description: description,
             views: 0,
-            uploadedAt: uploadedAt,
             uploadedBy: { id: req.local.auth.id },
             privacy: { id: privacy === PUBLIC ? PUBLIC_ID : PRIVATE_ID },
         });
+        await videoEntity.validate();
+
+        const processedData = await mediaService.processVideo(
+            video,
+            videoEntity.id,
+            thumbnail_timestamp || undefined,
+        );
+        videoEntity.video360Path = processedData.video360Path;
+        videoEntity.video480Path = processedData.video480Path;
+        videoEntity.video720Path = processedData.video720Path;
+        videoEntity.video1080Path = processedData.video1080Path;
+        videoEntity.thumbnailPath = processedData.thumbnailPath;
+        videoEntity.duration = processedData.duration;
 
         if (categories) {
-            _video.categories = await getRepository(Category).find({
+            videoEntity.categories = await getRepository(Category).find({
                 where: { category: In(categories.split(",")) },
             });
         }
 
         // use .save to also insert category entities
-        await videoRepository.save(_video);
-        if (early_response === "0") {
-            res.status(200).json({
-                data: _video,
-            });
-        }
+        await getRepository(Video).save(videoEntity);
+        res.status(200).json({
+            data: videoEntity,
+        });
         next();
     }
 
     @asyncHandler
+    @isBinaryIfExist("query.is_watch")
     public async getVideo(req: Request, res: Response) {
+        const is_watch = req.query.is_watch === "1";
         const { video_id } = req.params;
         const { auth } = req.local;
 
@@ -102,7 +80,13 @@ class VideoController {
 
         let videoQueryBuilder = videoRepository
             .createQueryBuilder("videos")
-            .addSelect("videos.videoPath")
+            .addSelect([
+                "videos.video480Path",
+                "videos.video720Path",
+                "videos.video1080Path",
+                "videos.isBlocked",
+            ])
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
@@ -136,8 +120,15 @@ class VideoController {
             data: video,
         });
 
-        await video.increaseView();
+        if (!is_watch) return;
 
+        const ip = req.headers["x-forwarded-for"]?.toString() || req.socket.remoteAddress;
+        const agent = req.headers["user-agent"] || "";
+        // increase view count
+        if (!(await redisService.isClientInWaitList(ip, agent, video.id))) {
+            await video.increaseView();
+            await redisService.addClientToWaitList(ip, agent, video.id);
+        }
         // store history if user logged in
         if (req.local.auth) {
             const { id } = req.local.auth;
@@ -316,19 +307,14 @@ class VideoController {
     }
 
     @asyncHandler
-    @mustExistOne("body.title", "body.description", "body.categories", "files.thumbnail")
+    @mustExistOne("body.title", "body.description", "body.categories", "body.thumbnail")
     @mustMatchIfExist("body.categories", listRegex)
     public async updateVideo(req: Request, res: Response, next: NextFunction) {
-        const { title, description, categories, privacy } = req.body;
-        const { thumbnail } = req.files;
+        const { title, description, categories, privacy, thumbnail } = req.body;
         const { video } = req.local;
 
         if (privacy) {
             expect(privacy, "400:invalid privacy value").to.be.oneOf([PUBLIC, PRIVATE]);
-        }
-        if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
         }
 
         video.title = title || video.title;
@@ -344,7 +330,7 @@ class VideoController {
             video.privacy.name = privacy;
         }
 
-        video.validate();
+        await video.validate();
         if (thumbnail) {
             const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
             await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
@@ -365,7 +351,18 @@ class VideoController {
     public async deleteVideo(req: Request, res: Response) {
         const { video } = req.local;
 
-        await mediaService.deleteVideo(extractFilenameFromPath(video.videoPath));
+        if (video.video360Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video360Path));
+        }
+        if (video.video480Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video480Path));
+        }
+        if (video.video720Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video720Path));
+        }
+        if (video.video1080Path) {
+            await mediaService.deleteVideo(extractFilenameFromPath(video.video1080Path));
+        }
         await mediaService.deleteThumbnail(extractFilenameFromPath(video.thumbnailPath));
 
         await getRepository(Video).delete({ id: video.id });
@@ -384,27 +381,49 @@ class VideoController {
         const offset = +req.query.offset || 0;
         const limit = +req.query.limit || 30;
 
-        const videos = await getRepository(Video)
-            .createQueryBuilder("videos")
+        const videoLikes = await getRepository(VideoLike)
+            .createQueryBuilder("video_likes")
+            .innerJoinAndSelect("video_likes.video", "videos")
             .leftJoinAndSelect("videos.categories", "categories")
-            .innerJoin("videos.videoLikes", "video_likes")
-            .innerJoin("videos.uploadedBy", "users")
             .innerJoinAndSelect("videos.privacy", "privacies")
+            .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
-            .where("video_likes.like = :isLiked", { isLiked: true })
+            .where("video_likes.like IS TRUE")
             .andWhere("video_likes.user_id = :userId", { userId: auth.id })
-            .andWhere("videos.isBlocked IS FALSE")
-            .andWhere("users.isBlocked IS FALSE")
-            .andWhere(
-                new Brackets((qb) =>
-                    qb
-                        .where(`privacies.id = ${PUBLIC_ID}`)
-                        .orWhere("users.username = :username", { username: auth.username }),
-                ),
-            )
             .skip(offset)
             .take(limit)
+            .orderBy("video_likes.reactedAt", "DESC")
             .getMany();
+
+        const videos = videoLikes
+            .map((videoLike) => ({
+                ...videoLike.video,
+                reactedAt: videoLike.reactedAt,
+            }))
+            .map((video) => {
+                // nullify if don't have permission
+                if (
+                    video.privacy.id === PRIVATE_ID &&
+                    (!auth || video.uploadedBy.username !== auth.username)
+                ) {
+                    return {
+                        id: video.id,
+                        reactedAt: video.reactedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                // nullify if (video | video owner) was blocked
+                if (video.uploadedBy.isBlocked || video.isBlocked) {
+                    return {
+                        id: video.id,
+                        reactedAt: video.reactedAt,
+                        uploadedBy: video.uploadedBy,
+                    };
+                }
+                delete video.isBlocked;
+                delete video.uploadedBy.isBlocked;
+                return video;
+            });
 
         res.status(200).json({
             data: videos,
@@ -464,6 +483,97 @@ class VideoController {
 
         res.status(200).json({
             data: relateVideos,
+        });
+    }
+
+    @asyncHandler
+    @isDateFormatIfExist("query.from")
+    public async getVideoAnalysis(req: Request, res: Response) {
+        const { video } = req.local;
+        const from = req.query.from as string;
+        const unit = req.query.unit || "day";
+
+        expect(unit, "400:invalid unit").to.be.oneOf(["day", "month", "year"]);
+
+        let dateFormat;
+        switch (unit) {
+            case "day":
+                dateFormat = "'YYYY-MM-DD'";
+                break;
+            case "month":
+                dateFormat = "'YYYY-MM'";
+                break;
+            case "year":
+                dateFormat = "'YYYY'";
+                break;
+        }
+
+        let viewsQueryBuilder = createQueryBuilder("video_views")
+            .select("SUM(views)", "views")
+            .addSelect(`TO_CHAR(date, ${dateFormat})`, "date")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(date, ${dateFormat})`)
+            .orderBy("date");
+
+        let commentsQueryBuilder = createQueryBuilder("comments")
+            .select("COUNT(id)", "comments")
+            .addSelect(`TO_CHAR(created_at, ${dateFormat})`, "date")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(created_at, ${dateFormat})`)
+            .orderBy("date");
+
+        let videoReactionsQueryBuilder = createQueryBuilder("video_likes")
+            .select(`TO_CHAR(reacted_at, ${dateFormat})`, "date")
+            .addSelect('SUM(CASE WHEN "like" THEN 1 ELSE 0 END)', "likes")
+            .addSelect('SUM(CASE WHEN "like" THEN 0 ELSE 1 END)', "dislikes")
+            .where("video_id = :videoId", { videoId: video.id })
+            .groupBy(`TO_CHAR(reacted_at, ${dateFormat})`)
+            .orderBy("date");
+
+        if (from) {
+            viewsQueryBuilder = viewsQueryBuilder.andWhere("date >= :from", {
+                from: new Date(from),
+            });
+            commentsQueryBuilder = commentsQueryBuilder.andWhere("created_at >= :from", {
+                from: new Date(from),
+            });
+            videoReactionsQueryBuilder = videoReactionsQueryBuilder.andWhere(
+                "reacted_at >= :from",
+                {
+                    from: new Date(from),
+                },
+            );
+        }
+
+        const data = {
+            comments: await commentsQueryBuilder.getRawMany(),
+            views: await viewsQueryBuilder.getRawMany(),
+            videoReactions: await videoReactionsQueryBuilder.getRawMany(),
+        };
+
+        res.status(200).json({ data: data });
+    }
+
+    @asyncHandler
+    @mustExistOne(
+        "body.video360Path",
+        "body.video480Path",
+        "body.video720Path",
+        "body.video1080Path",
+    )
+    public async updateVideoQuality(req: Request, res: Response, next: NextFunction) {
+        const { video360Path, video480Path, video720Path, video1080Path } = req.body;
+        const { video } = req.local;
+
+        if (video360Path) video.video360Path = video360Path;
+        if (video480Path) video.video480Path = video480Path;
+        if (video720Path) video.video720Path = video720Path;
+        if (video1080Path) video.video1080Path = video1080Path;
+
+        await getRepository(Video).save(video);
+
+        res.status(200).json({
+            data: { message: "update success" },
         });
     }
 }

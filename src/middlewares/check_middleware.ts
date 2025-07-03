@@ -46,6 +46,31 @@ class CheckMiddleware {
         next();
     }
 
+    /**
+     * Authorized user that upload the video and ADMIN
+     * can pass this middleware if the video is blocked.
+     */
+    @asyncHander
+    public async checkBlockedVideoPermission(req: Request, res: Response, next: NextFunction) {
+        const { auth, video } = req.local;
+        if (!auth || (auth.id !== video.uploadedBy.id && auth.role !== ADMIN)) {
+            expect(video.isBlocked, "405:permission denined").to.be.false;
+        }
+        next();
+    }
+
+    /**
+     * Only ADMIN can pass this middleware if the video owner is blocked
+     */
+    @asyncHander
+    public async checkBlockedVideoOwnerPermission(req: Request, res: Response, next: NextFunction) {
+        const { auth, video } = req.local;
+        if (!auth || auth.role !== ADMIN) {
+            expect(video.uploadedBy.isBlocked, "405:permission denined").to.be.false;
+        }
+        next();
+    }
+
     @asyncHander
     public async checkVideoOwnerIsNotBlocked(req: Request, res: Response, next: NextFunction) {
         expect(req.local.video.uploadedBy.isBlocked, "405:video owner was blocked").to.be.false;

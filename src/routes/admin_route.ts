@@ -1,8 +1,8 @@
 import * as express from "express";
 
 import adminController from "../controllers/admin_controller";
-import authController from "../controllers/auth_controller";
 
+import authMiddleware from "../middlewares/auth_middleware";
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 
@@ -14,29 +14,27 @@ router.use(express.urlencoded({ extended: true }));
 // modify video
 router.patch(
     "/videos/:video_id(\\w{10})",
-    authController.authorize,
+    authMiddleware.authorize,
     checkMiddleware.checkAuthorizedUserIsAdmin,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
-    checkMiddleware.checkVideoOwnerIsNotAdmin,
     adminController.modifyVideo,
 );
 
 // modify user
 router.patch(
     "/users/:username",
-    authController.authorize,
+    authMiddleware.authorize,
     checkMiddleware.checkAuthorizedUserIsAdmin,
     findMiddleware.findUser,
     checkMiddleware.checkUserExist,
-    checkMiddleware.checkUserIsNotAdmin,
     adminController.modifyUser,
 );
 
 // get videos
 router.get(
     "/videos",
-    authController.authorize,
+    authMiddleware.authorize,
     checkMiddleware.checkAuthorizedUserIsAdmin,
     adminController.getVideos,
 );
@@ -44,7 +42,7 @@ router.get(
 // get users
 router.get(
     "/users",
-    authController.authorize,
+    authMiddleware.authorize,
     checkMiddleware.checkAuthorizedUserIsAdmin,
     adminController.getUsers,
 );

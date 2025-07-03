@@ -1,5 +1,6 @@
 import * as express from "express";
 import * as morgan from "morgan";
+import * as cors from "cors";
 import env from "./env";
 
 import searchRoute from "../routes/search_route";
@@ -12,8 +13,7 @@ import historyRoute from "../routes/history_route";
 import adminRoute from "../routes/admin_route";
 import playlistRoute from "../routes/playlist_route";
 import streamRoute from "../routes/stream_route";
-
-import cleanMiddleware from "../middlewares/clean_middleware";
+import reportRoute from "../routes/report_route";
 
 import * as errorHandler from "../utils/error_handler";
 
@@ -23,8 +23,9 @@ if (env.NODE_ENV === "development") {
     app.use(morgan("dev"));
 }
 
+app.use(cors())
 app.use((req, res, next) => {
-    req.local = { tempFilePaths: [] };
+    req.local = {};
     next();
 });
 
@@ -38,10 +39,8 @@ app.use("/histories", historyRoute);
 app.use("/admin", adminRoute);
 app.use("/playlists", playlistRoute);
 app.use("/streams", streamRoute);
+app.use("/reports", reportRoute);
 
-app.use(cleanMiddleware.removeTempFiles);
-
-app.use(errorHandler.removeTempFiles);
 app.use(errorHandler.clientErrorHandler);
 app.use(errorHandler.serverErrorHandler);
 

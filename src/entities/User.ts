@@ -13,6 +13,7 @@ import {
 } from "typeorm";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
+import { MinLength, MaxLength, Matches, validateOrReject } from "class-validator";
 import { CommentLike } from "./CommentLike";
 import { Comment } from "./Comment";
 import { Subscription } from "./Subscription";
@@ -22,12 +23,13 @@ import { WatchedVideo } from "./WatchedVideo";
 
 import env from "../providers/env";
 import { nameRegex, passwordRegex, urlPathRegex, usernameRegex } from "../commons/regexs";
-import { ModelError } from "../commons/errors";
 import { toTitleCase } from "../utils/string_function";
 import { IUserToken } from "../interfaces/user";
 import { Role } from "./Role";
 import { Playlist } from "./Playlist";
 import { Stream } from "./Stream";
+import { Report } from "./Report";
+import { LoginLog } from "./LoginLog";
 
 @Index("users_pkey", ["id"], { unique: true })
 @Index("users_username_key", ["username"], { unique: true })
@@ -36,27 +38,48 @@ export class User {
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
 
+    @MinLength(5, { message: "username is too short" })
+    @MaxLength(32, { message: "username is too long" })
+    @Matches(usernameRegex, { message: "invalid username" })
     @Column("character varying", { name: "username", unique: true, length: 32 })
     username: string;
 
+    @MinLength(6, { message: "password is too short" })
+    @MaxLength(32, { message: "password is too long" })
+    @Matches(passwordRegex, { message: "invalid password" })
     @Column("character varying", { name: "password", length: 72, select: false })
     password: string;
 
+    @MaxLength(32, { message: "firstName is too long" })
+    @Matches(nameRegex, { message: "invalid firstName" })
     @Column("character varying", { name: "first_name", length: 32 })
     firstName: string;
 
+    @MaxLength(32, { message: "lastName is too long" })
+    @Matches(nameRegex, { message: "invalid lastName" })
     @Column("character varying", { name: "last_name", length: 32 })
     lastName: string;
 
     @Column("boolean", { name: "female" })
     female: boolean;
 
+    @MaxLength(10000, { message: "description is too long" })
+    @Column("character varying", {
+        name: "description",
+        nullable: true,
+        length: 10000,
+    })
+    description: string | null;
+
+    @Matches(urlPathRegex, { message: "bannerPath is not url path" })
     @Column("character varying", { name: "banner_path", length: 128 })
     bannerPath: string | null;
 
+    @Matches(urlPathRegex, { message: "avatarPath is not url path" })
     @Column("character varying", { name: "avatar_path", length: 128 })
     avatarPath: string | null;
 
+    @Matches(urlPathRegex, { message: "iconPath is not url path" })
     @Column("character varying", { name: "icon_path", length: 128 })
     iconPath: string | null;
 
@@ -80,6 +103,9 @@ export class User {
     @OneToMany(() => Comment, (comments) => comments.user)
     comments: Comment[];
 
+    @OneToMany(() => Report, (reports) => reports.user)
+    reports: Report[];
+
     @OneToMany(() => Subscription, (subscriptions) => subscriptions.subscriber)
     subscribers: Subscription[];
 
@@ -91,6 +117,9 @@ export class User {
 
     @OneToMany(() => Video, (videos) => videos.uploadedBy)
     videos: Video[];
+
+    @OneToMany(() => LoginLog, (loginLogs) => loginLogs.user)
+    loginLogs: LoginLog[];
 
     @OneToMany(() => WatchedVideo, (watchedVideos) => watchedVideos.user)
     watchedVideos: WatchedVideo[];
@@ -156,27 +185,8 @@ export class User {
 
     @BeforeInsert()
     @BeforeUpdate()
-    validate() {
-        if (this.username && !usernameRegex.test(this.username)) {
-            throw new ModelError("invalid username");
-        }
-        if (this.firstName && !nameRegex.test(this.firstName)) {
-            throw new ModelError("invalid first_name");
-        }
-        if (this.lastName && !nameRegex.test(this.lastName)) {
-            throw new ModelError("invalid last_name");
-        }
-        if (this.avatarPath && !urlPathRegex.test(this.avatarPath)) {
-            throw new ModelError("invalid avatar_path");
-        }
-        if (this.iconPath && !urlPathRegex.test(this.iconPath)) {
-            throw new ModelError("invalid icon_path");
-        }
-        if (this.password && this.tempPassword !== this.password) {
-            if (!passwordRegex.test(this.password)) {
-                throw new ModelError("invalid password");
-            }
-        }
+    async validate() {
+        await validateOrReject(this, { skipMissingProperties: true });
     }
 
     @BeforeInsert()

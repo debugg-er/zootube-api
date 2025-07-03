@@ -1,8 +1,6 @@
-import * as fs from "fs";
 import * as request from "request-promise";
 
 import env from "../providers/env";
-import { File } from "../interfaces/general";
 
 export class MediaServiceError extends Error {
     constructor(message: string) {
@@ -10,88 +8,68 @@ export class MediaServiceError extends Error {
     }
 }
 
+interface ProcessVideoResponse {
+    video360Path?: string;
+    video480Path?: string;
+    video720Path?: string;
+    video1080Path?: string;
+    thumbnailPath: string;
+    duration: number;
+}
+
 class MediaService {
     public async processVideo(
-        video: File,
-        thumbnailTimestamp: number,
-    ): Promise<{ videoPath: string; thumbnailPath: string }> {
+        video: string,
+        videoId: string,
+        thumbnailTimestamp?: number,
+    ): Promise<ProcessVideoResponse> {
         try {
-            const { data } = await request.post(env.MEDIA_SERVER_ENDPOINT + "/videos", {
+            const { data } = await request.patch(env.MEDIA_SERVER_ENDPOINT + "/videos/" + video, {
                 json: true,
-                formData: {
+                form: {
                     seek: ~~thumbnailTimestamp,
-                    video: {
-                        value: fs.createReadStream(video.path),
-                        options: {
-                            filename: video.name,
-                            contentType: video.mimetype,
-                        },
-                    },
+                    video_id: videoId,
                 },
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body.fail.message);
         }
     }
 
-    public async processBanner(photo: File): Promise<{ bannerPath: string }> {
+    public async processBanner(photo: string): Promise<{ bannerPath: string }> {
         try {
-            const { data } = await request.post(env.MEDIA_SERVER_ENDPOINT + "/banners", {
+            const { data } = await request.patch(env.MEDIA_SERVER_ENDPOINT + "/banners/" + photo, {
                 json: true,
-                formData: {
-                    banner: {
-                        value: fs.createReadStream(photo.path),
-                        options: {
-                            filename: photo.name,
-                            contentType: photo.mimetype,
-                        },
-                    },
-                },
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body.fail.message);
         }
     }
 
-    public async processAvatar(photo: File): Promise<{ avatarPath: string; iconPath: string }> {
+    public async processAvatar(photo: string): Promise<{ avatarPath: string; iconPath: string }> {
         try {
-            const { data } = await request.post(env.MEDIA_SERVER_ENDPOINT + "/avatars", {
+            const { data } = await request.patch(env.MEDIA_SERVER_ENDPOINT + "/avatars/" + photo, {
                 json: true,
-                formData: {
-                    avatar: {
-                        value: fs.createReadStream(photo.path),
-                        options: {
-                            filename: photo.name,
-                            contentType: photo.mimetype,
-                        },
-                    },
-                },
             });
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body.fail.message);
         }
     }
 
-    public async processThumbnail(photo: File): Promise<{ thumbnailPath: string }> {
+    public async processThumbnail(photo: string): Promise<{ thumbnailPath: string }> {
         try {
-            const { data } = await request.post(env.MEDIA_SERVER_ENDPOINT + "/thumbnails", {
-                json: true,
-                formData: {
-                    thumbnail: {
-                        value: fs.createReadStream(photo.path),
-                        options: {
-                            filename: photo.name,
-                            contentType: photo.mimetype,
-                        },
-                    },
+            const { data } = await request.patch(
+                env.MEDIA_SERVER_ENDPOINT + "/thumbnails/" + photo,
+                {
+                    json: true,
                 },
-            });
+            );
             return data;
         } catch (err) {
-            throw new MediaServiceError(err.response.body.error.message);
+            throw new MediaServiceError(err.response.body.fail.message);
         }
     }
 

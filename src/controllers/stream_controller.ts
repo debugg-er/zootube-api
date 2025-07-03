@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { expect } from "chai";
 import { getRepository } from "typeorm";
 
@@ -6,6 +6,9 @@ import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
 import { Stream } from "../entities/Stream";
+import { Video } from "../entities/Video";
+import { PRIVATE_ID } from "../entities/Privacy";
+import mediaService from "../services/media_service";
 
 class StreamController {
     @asyncHandler
@@ -64,13 +67,57 @@ class StreamController {
 
         expect(stream, "404:stream not found").to.exist;
         expect(stream_key, "401:stream_key not match").to.equal(stream.streamKey);
+        if (status === "live") {
+            expect(stream.isStreaming, "400:stream has been started").to.be.false;
+        } else if (status === "off") {
+            expect(stream.isStreaming, "400:stream has been ended").to.be.true;
+        }
 
         stream.isStreaming = status === "live";
+        if (status === "off") stream.lastStreamedAt = new Date();
         await getRepository(Stream).save(stream);
 
         res.status(200).json({
             data: stream,
         });
+    }
+
+    @asyncHandler
+    @mustExist("body.video", "body.stream_id", "body.stream_key")
+    public async uploadStreamedVideo(req: Request, res: Response, next: NextFunction) {
+        const { stream_id, stream_key, video } = req.body;
+
+        const stream = await getRepository(Stream).findOne({
+            where: { id: stream_id, streamKey: stream_key },
+            relations: ["user"],
+        });
+        expect(stream, "404:stream not found").to.exist;
+
+        const videoEntity = getRepository(Video).create({
+            id: await Video.generateId(),
+            title: new Date().toLocaleString(),
+            views: 0,
+            uploadedBy: { id: stream.user.id },
+            privacy: { id: PRIVATE_ID },
+        });
+        await videoEntity.validate();
+
+        res.status(200).json({
+            data: {
+                message: "upload video success, waiting to process",
+            },
+        });
+
+        const processedData = await mediaService.processVideo(video, videoEntity.id);
+        videoEntity.video360Path = processedData.video360Path;
+        videoEntity.video480Path = processedData.video480Path;
+        videoEntity.video720Path = processedData.video720Path;
+        videoEntity.video1080Path = processedData.video1080Path;
+        videoEntity.thumbnailPath = processedData.thumbnailPath;
+        videoEntity.duration = processedData.duration;
+
+        await getRepository(Video).save(videoEntity);
+        next();
     }
 }
 

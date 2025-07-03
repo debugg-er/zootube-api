@@ -13,9 +13,13 @@ router.get("/", streamController.getStreams);
 // get stream
 router.get("/:stream_id(\\w{10})", streamController.getStream);
 
-// update stream status with stream_key (live or off)
-// Note: this route should be filtered by webserver
+// Note: these endpoit under this line should be filtered by webserver
 // and only allow stream-server to request locally
+
+// update stream status with stream_key (live or off)
 router.patch("/:stream_id(\\w{10})", streamController.updateStreamStatus);
+
+// upload streamed video
+router.post("/", streamController.uploadStreamedVideo);
 
 export default router;

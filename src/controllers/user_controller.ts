@@ -1,4 +1,3 @@
-import * as FileType from "file-type";
 import { NextFunction, Request, Response } from "express";
 import { createQueryBuilder, getRepository } from "typeorm";
 import { expect } from "chai";
@@ -28,16 +27,10 @@ class UserController {
             .where("user_id = :userId", { userId: id })
             .getRawOne();
 
-        const { totalViews } = await createQueryBuilder("videos")
-            .select('COALESCE(SUM(views), 0) AS "totalViews"')
-            .where("uploaded_by = :userId", { userId: id })
-            .getRawOne();
-
         res.status(200).json({
             data: {
                 ...user,
-                totalViews: +totalViews,
-                totalSubscribers: +totalSubscribers,
+                totalSubscribers: totalSubscribers,
             },
         });
     }
@@ -52,17 +45,66 @@ class UserController {
             .where("user_id = :userId", { userId: user.id })
             .getRawOne();
 
-        const { totalViews } = await createQueryBuilder("videos")
-            .select('COALESCE(SUM(views), 0) AS "totalViews"')
-            .where("uploaded_by = :userId", { userId: user.id })
-            .getRawOne();
-
         res.status(200).json({
             data: {
                 ...user,
-                totalViews: +totalViews,
-                totalSubscribers: +totalSubscribers,
+                totalSubscribers: totalSubscribers,
             },
+        });
+    }
+
+    @asyncHandler
+    public async getUserStatistic(req: Request, res: Response) {
+        const { user } = req.local;
+        delete user.isBlocked;
+
+        const queries = [
+            createQueryBuilder("subscriptions")
+                .select("COALESCE(COUNT(subscriber_id), 0)", "totalSubscribers")
+                .where("user_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("subscriptions")
+                .select("COALESCE(COUNT(user_id), 0)", "totalSubscriptions")
+                .where("subscriber_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("videos")
+                .select("COALESCE(SUM(views), 0)", "totalViews")
+                .addSelect("COALESCE(COUNT(id), 0)", "totalVideos")
+                .where("uploaded_by = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("comments")
+                .select("COALESCE(COUNT(id), 0)", "totalComments")
+                .where("user_id = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("videos", "v")
+                .innerJoin("video_likes", "vl", "v.id = vl.video_id")
+                .select('COALESCE(SUM(CASE WHEN "like" THEN 1 ELSE 0 END), 0)', "totalVideoLikes")
+                .addSelect(
+                    'COALESCE(SUM(CASE WHEN "like" THEN 0 ELSE 1 END), 0)',
+                    "totalVideoDislikes",
+                )
+                .where("uploaded_by = :userId", { userId: user.id })
+                .getRawOne(),
+
+            createQueryBuilder("comments", "c")
+                .innerJoin("comment_likes", "cl", "c.id = cl.comment_id")
+                .select('COALESCE(SUM(CASE WHEN "like" THEN 1 ELSE 0 END), 0)', "totalCommentLikes")
+                .addSelect(
+                    'COALESCE(SUM(CASE WHEN "like" THEN 0 ELSE 1 END), 0)',
+                    "totalCommentDislikes",
+                )
+                .where("c.user_id = :userId", { userId: user.id })
+                .getRawOne(),
+        ];
+
+        let statistic = (await Promise.all(queries)).reduce((acc, cur) => ({ ...acc, ...cur }), {});
+
+        res.status(200).json({
+            data: statistic,
         });
     }
 
@@ -79,6 +121,7 @@ class UserController {
         let videosQueryBuilder = getRepository(Video)
             .createQueryBuilder("videos")
             .addSelect("videos.isBlocked")
+            .innerJoinAndSelect("videos.privacy", "privacies")
             .leftJoinAndSelect("videos.categories", "categories")
             .innerJoin("videos.uploadedBy", "users")
             .addSelect(["users.username", "users.iconPath", "users.firstName", "users.lastName"])
@@ -273,34 +316,26 @@ class UserController {
         "body.first_name",
         "body.last_name",
         "body.female",
-        "files.avatar",
-        "files.banner",
+        "body.description",
+        "body.avatar",
+        "body.banner",
     )
     @isBinaryIfExist("body.female")
     public async updateProfile(req: Request, res: Response, next: NextFunction) {
-        const { first_name, last_name, female } = req.body;
-        const { avatar, banner } = req.files;
-
-        if (avatar) {
-            const avatarType = await FileType.fromFile(avatar.path);
-            expect(avatarType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-        }
-        if (banner) {
-            const bannerType = await FileType.fromFile(banner.path);
-            expect(bannerType.ext, "400:invalid file").to.be.oneOf(["jpg", "png"]);
-        }
+        const { first_name, last_name, female, description, avatar, banner } = req.body;
 
         const userRepository = getRepository(User);
         const user = await userRepository.findOne(req.local.auth.id);
 
         user.firstName = first_name || user.firstName;
         user.lastName = last_name || user.lastName;
+        user.description = description || user.description;
         if (female !== undefined) {
             user.female = female === "1";
         }
 
         // stop handle when user contain invalid property
-        user.validate();
+        await user.validate();
 
         if (avatar) {
             const { avatarPath, iconPath } = await mediaService.processAvatar(avatar);
@@ -314,6 +349,7 @@ class UserController {
             user.avatarPath = avatarPath;
             user.iconPath = iconPath;
         }
+        await userRepository.save(user);
 
         if (banner) {
             const { bannerPath } = await mediaService.processBanner(banner);
@@ -323,7 +359,6 @@ class UserController {
 
             user.bannerPath = bannerPath;
         }
-
         await userRepository.save(user);
 
         res.status(200).json({
@@ -423,18 +458,12 @@ class UserController {
     }
 
     @asyncHandler
-    @mustExistOne("body.name", "files.thumbnail", "renew_key")
+    @mustExistOne("body.name", "body.thumbnail", "body.renew_key", "body.description")
     @isBinaryIfExist("body.renew_key")
     public async updateStreamInfo(req: Request, res: Response, next: NextFunction) {
         const { auth } = req.local;
-        const { thumbnail } = req.files;
-        const { name } = req.body;
+        const { name, description, thumbnail } = req.body;
         const renew_key = req.body.renew_key === "1";
-
-        if (thumbnail) {
-            const thumbnailType = await FileType.fromFile(thumbnail.path);
-            expect(thumbnailType.ext, "400:invalid thumbnail").to.be.oneOf(["jpg", "png"]);
-        }
 
         const stream = await getRepository(Stream)
             .createQueryBuilder("streams")
@@ -444,11 +473,13 @@ class UserController {
             .getOne();
 
         if (renew_key) {
-            stream.streamKey = randomString(STREAM_KEY_LENGTH);
+            expect(stream.isStreaming, "400:video is live streaming").to.be.false;
         }
-        if (name) {
-            stream.name = name;
-        }
+
+        if (renew_key) stream.streamKey = randomString(STREAM_KEY_LENGTH);
+        if (name) stream.name = name;
+        if (description) stream.description = description;
+
         if (thumbnail) {
             const { thumbnailPath } = await mediaService.processThumbnail(thumbnail);
             if (stream.thumbnailPath !== null) {

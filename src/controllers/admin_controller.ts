@@ -4,8 +4,11 @@ import { getRepository } from "typeorm";
 import { mustInRangeIfExist } from "../decorators/assert_decorators";
 import asyncHandler from "../decorators/async_handler";
 import { isNumberIfExist, mustExist } from "../decorators/validate_decorators";
+import { LoginLog } from "../entities/LoginLog";
+import { Report } from "../entities/Report";
 import { User } from "../entities/User";
 import { Video } from "../entities/Video";
+import redisService from "../services/redis_service";
 
 class AdminController {
     @asyncHandler
@@ -18,6 +21,9 @@ class AdminController {
 
         video.isBlocked = action === "ban";
         await getRepository(Video).save(video);
+        if (action === "ban") {
+            await getRepository(Report).update({ video: { id: video.id } }, { isResolved: true });
+        }
 
         res.status(200).json({
             data: {
@@ -34,7 +40,15 @@ class AdminController {
 
         expect(action, "400:invalid action").to.be.oneOf(["ban", "unban"]);
 
-        user.isBlocked = action === "ban";
+        const loginLogs = await getRepository(LoginLog).find({ user: user, loggedOutAt: null });
+        const allActiveTokens = loginLogs.map((log) => log.token);
+        if (action === "ban") {
+            await redisService.addTokensToBlacklist(allActiveTokens);
+            user.isBlocked = true;
+        } else {
+            await redisService.removeTokensFromBlackList(allActiveTokens);
+            user.isBlocked = false;
+        }
         await getRepository(User).save(user);
 
         res.status(200).json({
@@ -90,6 +104,7 @@ class AdminController {
         if (status === "banned") {
             videos = await getRepository(Video)
                 .createQueryBuilder("videos")
+                .innerJoinAndSelect("videos.privacy", "privacies")
                 .innerJoin("videos.uploadedBy", "users")
                 .addSelect([
                     "users.username",

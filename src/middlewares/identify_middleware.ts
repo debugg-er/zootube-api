@@ -21,6 +21,17 @@ class IdentifyMiddleware {
     }
 
     @asyncHandler
+    public async isOwnCommentOrOwnVideo(req: Request, res: Response, next: NextFunction) {
+        const { comment, video, auth } = req.local;
+
+        expect(auth.id, "400:permission denined").to.be.oneOf([
+            comment.user.id,
+            video.uploadedBy.id,
+        ]);
+        next();
+    }
+
+    @asyncHandler
     public async isOwnPlaylist(req: Request, res: Response, next: NextFunction) {
         const { playlist, auth } = req.local;
 

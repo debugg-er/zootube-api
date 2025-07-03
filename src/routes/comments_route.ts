@@ -1,8 +1,8 @@
 import * as express from "express";
 
-import authController from "../controllers/auth_controller";
 import commentController from "../controllers/comment_controller";
 
+import authMiddleware from "../middlewares/auth_middleware"
 import findMiddleware from "../middlewares/find_middleware";
 import checkMiddleware from "../middlewares/check_middleware";
 import identifyMiddleware from "../middlewares/identify_middleware";
@@ -15,7 +15,7 @@ router.use(express.urlencoded({ extended: true }));
 // get comments
 router.get(
     "/",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -27,7 +27,7 @@ router.get(
 // get replies
 router.get(
     "/:comment_id(\\d+)",
-    authController.authorizeIfGiven,
+    authMiddleware.authorizeIfGiven,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -43,7 +43,7 @@ router.get(
 // comment
 router.post(
     "/",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -55,7 +55,7 @@ router.post(
 // reply comment
 router.post(
     "/:comment_id(\\d+)",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -71,7 +71,7 @@ router.post(
 // react comment
 router.post(
     "/:comment_id(\\d+)/reaction",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -87,7 +87,7 @@ router.post(
 // delete comment reaction
 router.delete(
     "/:comment_id(\\d+)/reaction",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     findMiddleware.findComment,
@@ -99,7 +99,7 @@ router.delete(
 // update own comment
 router.patch(
     "/:comment_id(\\d+)",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     checkMiddleware.checkVideoIsNotBlocked,
@@ -112,16 +112,16 @@ router.patch(
     commentController.updateComment,
 );
 
-// delete own comment
+// delete comment
 router.delete(
     "/:comment_id(\\d+)",
-    authController.authorize,
+    authMiddleware.authorize,
     findMiddleware.findVideo,
     checkMiddleware.checkVideoExist,
     findMiddleware.findComment,
     checkMiddleware.checkCommentExist,
     checkMiddleware.checkCommentExistInVideo,
-    identifyMiddleware.isOwnComment,
+    identifyMiddleware.isOwnCommentOrOwnVideo,
     commentController.deleteComment,
 );
 
